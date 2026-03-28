@@ -1,0 +1,13 @@
+/* App basic structural styling without defaults */
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Reset image behaviors for premium look if needed */
+img {
+  max-width: 100%;
+  height: auto;
+}

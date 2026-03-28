@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-slate-900 font-sans antialiased selection:bg-primary-600 selection:text-white transition-colors duration-300;
+  }
+  
+  .dark body {
+    @apply bg-dark-bg text-dark-text selection:bg-primary-600;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply px-6 py-3 bg-primary-600 hover:bg-primary-700 active:bg-primary-900 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary-600/30 hover:shadow-primary-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-white dark:bg-dark-card hover:bg-slate-50 dark:hover:bg-dark-border text-slate-800 dark:text-gray-100 font-semibold rounded-xl transition-all duration-300 border border-slate-200 dark:border-dark-border shadow-sm flex items-center justify-center gap-2 hover:border-primary-600/30;
+  }
+
+  /* Cards */
+  .card-premium {
+    @apply bg-white dark:bg-dark-card rounded-2xl shadow-premium dark:shadow-dark-premium border border-slate-100 dark:border-dark-border transition-all duration-500 overflow-hidden hover:-translate-y-1 hover:shadow-premium-hover dark:hover:shadow-dark-premium-hover;
+  }
+  
+  /* Inputs */
+  .input-premium {
+    @apply w-full px-5 py-3.5 rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-[#1A1D24] text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-600 focus:bg-white dark:focus:bg-[#1A1D24] focus:border-primary-600 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-gray-500;
+  }
+
+  /* Structural/Layout Utilities */
+  .section-padding {
+    @apply py-20 md:py-32;
+  }
+  
+  .container-bound {
+    @apply container mx-auto px-6 max-w-7xl;
+  }
+
+  /* Text Gradients */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-red-400;
+  }
+
+  /* Glassmorphism */
+  .glass-effect {
+    @apply bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-white/20 dark:border-dark-border/50;
+  }
+}
+
+/* Custom Scrollbar for a premium look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-dark-bg;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-dark-border rounded-full hover:bg-primary-600 dark:hover:bg-primary-600 transition-colors;
+}
+
+/* Hide scrollbar for clean UI elements but allow scroll */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
