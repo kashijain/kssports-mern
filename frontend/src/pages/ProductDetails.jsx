@@ -1,16 +1,18 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useCartStore, useProductStore } from '../store/useStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { Star, Truck, ShieldCheck, Heart, Share2, ChevronRight, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getImageUrl } from '../utils/media';
 
 const ProductDetails = () => {
   const { id } = useParams();
   const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
   const [activeImage, setActiveImage] = useState(0);
+  const navigate = useNavigate();
   
   const { addToCart } = useCartStore();
   const { product, loading, fetchProductById } = useProductStore();
@@ -25,6 +27,11 @@ const ProductDetails = () => {
     addToCart(product, qty);
     toast.success(`${qty} x ${product.name} added to cart`);
   };
+
+  const galleryImages =
+    product?.images?.length > 0
+      ? product.images.map((image) => getImageUrl(image))
+      : [getImageUrl(product?.image)];
 
   if (loading || !product) return (
     <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-12">
@@ -97,9 +104,12 @@ const ProductDetails = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
                   transition={{ duration: 0.3 }}
-                  src={product.images && product.images.length > 0 ? product.images[activeImage] || product.images[0] : product.image} 
+                  src={galleryImages[activeImage] || galleryImages[0]}
                   alt={product.name} 
                   className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                  onError={(e) => {
+                    e.currentTarget.src = getImageUrl();
+                  }}
                 />
               </AnimatePresence>
               
@@ -114,13 +124,19 @@ const ProductDetails = () => {
             </div>
             {/* Gallery Thumbnails */}
             <div className="grid grid-cols-4 gap-4">
-               {(product.images && product.images.length > 0 ? product.images : [product.image, product.image, product.image, product.image]).map((img, i) => (
+               {galleryImages.map((img, i) => (
                  <button 
                   key={i} 
                   onClick={() => setActiveImage(i)}
                   className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-300 ${activeImage === i ? 'border-primary-600 shadow-md scale-95' : 'border-transparent hover:border-primary-600/50 hover:scale-105'}`}
                  >
-                    <img src={img} className="w-full h-full object-cover bg-white dark:bg-dark-card" />
+                    <img
+                      src={img}
+                      className="w-full h-full object-cover bg-white dark:bg-dark-card"
+                      onError={(e) => {
+                        e.currentTarget.src = getImageUrl();
+                      }}
+                    />
                  </button>
                ))}
             </div>
@@ -208,7 +224,7 @@ const ProductDetails = () => {
                       Add to Cart
                     </button>
                     <button 
-                      onClick={() => { addToCartHandler(); /* redirect to checkout */ }}
+                      onClick={() => { addToCartHandler(); navigate('/cart'); }}
                       className="flex-1 btn-primary h-16 text-lg tracking-wide font-bold shadow-lg shadow-primary-600/30"
                     >
                       Buy it Now

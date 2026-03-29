@@ -3,6 +3,7 @@ import { ShoppingCart, Star, Eye, Heart } from 'lucide-react';
 import { useCartStore } from '../../store/useStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
 import toast from 'react-hot-toast';
+import { getPrimaryProductImage } from '../../utils/media';
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCartStore();
@@ -43,10 +44,13 @@ const ProductCard = ({ product }) => {
         </div>
         
         <img 
-          src={product.images && product.images.length > 0 ? product.images[0] : product.image} 
+          src={getPrimaryProductImage(product)} 
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-110 group-hover:rotate-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src = getPrimaryProductImage({});
+          }}
         />
         
         {/* Quick Actions (Hover) */}

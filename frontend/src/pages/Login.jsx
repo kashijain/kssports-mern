@@ -22,16 +22,20 @@ const Login = () => {
   const submitHandler = async (e) => {
     e.preventDefault();
     try {
+      let authResponse;
       if (isRegister) {
-         await register(name, email, password, role, sellerSecret);
+         authResponse = await register(name, email, password, role, sellerSecret);
          toast.success('Registration successful. Welcome to K.S. Sports!');
       } else {
-         await login(email, password);
+         authResponse = await login(email, password);
          toast.success('Sign in successful. Welcome back!');
       }
-      navigate('/');
+      navigate(
+        location.state?.from || (authResponse?.role === 'seller' ? '/admin' : '/'),
+        { replace: true }
+      );
     } catch (err) {
-      toast.error(error || 'Authentication failed. Please check your credentials.');
+      toast.error(err.message || error || 'Authentication failed. Please check your credentials.');
     }
   };
 
@@ -102,11 +106,14 @@ const Login = () => {
                                <input type="radio" value="customer" checked={role === 'customer'} onChange={() => setRole('customer')} className="hidden" />
                                Customer
                              </label>
-                             <label className={`flex-1 flex items-center justify-center p-3 rounded-xl border cursor-pointer font-bold transition-all duration-300 ${role === 'seller' ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-600' : 'border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-bg text-slate-500 hover:bg-slate-100'}`}>
+                           <label className={`flex-1 flex items-center justify-center p-3 rounded-xl border cursor-pointer font-bold transition-all duration-300 ${role === 'seller' ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-600' : 'border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-bg text-slate-500 hover:bg-slate-100'}`}>
                                <input type="radio" value="seller" checked={role === 'seller'} onChange={() => setRole('seller')} className="hidden" />
                                Seller
                              </label>
                           </div>
+                          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Seller registration is restricted to approved K.S. Sports accounts for Roni and Kashish only.
+                          </p>
                           
                           <AnimatePresence>
                              {role === 'seller' && (

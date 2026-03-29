@@ -12,8 +12,10 @@ import ProductDetails from './pages/ProductDetails';
 import Dashboard from './pages/Dashboard';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import ProtectedRoute from './components/common/ProtectedRoute';
 
 import { Toaster } from 'react-hot-toast';
+import { useAuthStore } from './store/useStore';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -27,6 +29,17 @@ const ScrollToTop = () => {
 };
 
 const App = () => {
+  const { userInfo, hydrateAuth } = useAuthStore();
+
+  useEffect(() => {
+    if (userInfo?.token) {
+      hydrateAuth();
+      return;
+    }
+
+    useAuthStore.getState().markHydrated();
+  }, [userInfo?.token, hydrateAuth]);
+
   return (
     <Router>
       <ScrollToTop />
@@ -45,11 +58,18 @@ const App = () => {
             <Route path="/register" element={<Login />} />
 
             <Route path="/product/:id" element={<ProductDetails />} />
-            <Route path="/profile" element={<Dashboard />} />
-            <Route path="/admin" element={<Dashboard />} />
-            <Route path="/admin/add-product" element={<Dashboard />} />
-            <Route path="/admin/manage-products" element={<Dashboard />} />
-            <Route path="/admin/orders" element={<Dashboard />} />
+
+            <Route element={<ProtectedRoute />}>
+              <Route path="/profile" element={<Dashboard />} />
+            </Route>
+
+            <Route element={<ProtectedRoute sellerOnly />}>
+              <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin/add-product" element={<Dashboard />} />
+              <Route path="/admin/manage-products" element={<Dashboard />} />
+              <Route path="/admin/edit-product/:id" element={<Dashboard />} />
+              <Route path="/admin/orders" element={<Dashboard />} />
+            </Route>
 
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />

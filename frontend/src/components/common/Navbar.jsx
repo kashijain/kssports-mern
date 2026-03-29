@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCartStore, useAuthStore, useThemeStore } from '../../store/useStore';
 import { ShoppingBag, Heart, User, Menu, X, Moon, Sun, Search, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,7 @@ const Navbar = () => {
   const { userInfo, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const cartItemsCount = cartItems.reduce((acc, item) => acc + item.qty, 0);
 
@@ -33,14 +34,15 @@ const Navbar = () => {
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Shop', path: '/shop' },
-    { name: 'Categories', path: '/categories' },
+    { name: 'Collections', path: '/shop' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setIsMobileMenuOpen(false);
+    navigate('/login');
   };
 
   return (

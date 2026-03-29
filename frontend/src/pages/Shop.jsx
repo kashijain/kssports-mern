@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/product/ProductCard";
 import {
   Search,
@@ -12,7 +13,8 @@ import { useProductStore } from "../store/useStore";
 
 const Shop = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [category, setCategory] = useState("All");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [category, setCategory] = useState(searchParams.get("category") || "All");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
 
@@ -22,9 +24,13 @@ const Shop = () => {
 
   useEffect(() => {
     if (typeof fetchProducts === "function") {
-      fetchProducts();
+      fetchProducts().catch(() => {});
     }
   }, [fetchProducts]);
+
+  useEffect(() => {
+    setCategory(searchParams.get("category") || "All");
+  }, [searchParams]);
 
   const triggerLocalLoading = () => {
     setLocalLoading(true);
@@ -34,6 +40,14 @@ const Shop = () => {
   const handleCategoryChange = (selectedCategory) => {
     triggerLocalLoading();
     setCategory(selectedCategory);
+    if (selectedCategory === "All") {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("category");
+      setSearchParams(nextParams);
+      return;
+    }
+
+    setSearchParams({ category: selectedCategory });
   };
 
   const handleSearchChange = (e) => {
@@ -46,6 +60,7 @@ const Shop = () => {
     setSearchTerm("");
     setCategory("All");
     setShowMobileFilters(false);
+    setSearchParams({});
   };
 
   const safeProducts = useMemo(() => {

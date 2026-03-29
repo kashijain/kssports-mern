@@ -2,12 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../api/axios';
 
+const getErrorMessage = (error, fallback) =>
+  error.response?.data?.message || fallback;
+
 export const useCartStore = create(
   persist(
     (set, get) => ({
       cartItems: [],
       addToCart: (product, qty) => {
-        const item = { ...product, qty };
+        const normalizedQty = Math.max(1, Number(qty) || 1);
+        const item = { ...product, qty: normalizedQty };
         const existItem = get().cartItems.find((x) => x._id === item._id);
 
         if (existItem) {
@@ -36,16 +40,18 @@ export const useAuthStore = create(
       userInfo: null,
       loading: false,
       error: null,
+      authReady: false,
 
       login: async (email, password) => {
         set({ loading: true, error: null });
         try {
           const { data } = await api.post('/users/auth', { email, password });
-          set({ userInfo: data, loading: false });
+          set({ userInfo: data, loading: false, authReady: true });
           return data;
         } catch (error) {
-          set({ error: error.response?.data?.message || 'Login failed', loading: false });
-          throw error;
+          const message = getErrorMessage(error, 'Login failed');
+          set({ error: message, loading: false, authReady: true });
+          throw new Error(message);
         }
       },
 
@@ -53,28 +59,56 @@ export const useAuthStore = create(
         set({ loading: true, error: null });
         try {
           const { data } = await api.post('/users', { name, email, password, role, sellerSecret });
-          set({ userInfo: data, loading: false });
+          set({ userInfo: data, loading: false, authReady: true });
           return data;
         } catch (error) {
-          set({ error: error.response?.data?.message || 'Registration failed', loading: false });
+          const message = getErrorMessage(error, 'Registration failed');
+          set({ error: message, loading: false, authReady: true });
+          throw new Error(message);
+        }
+      },
+
+      syncProfile: async () => {
+        try {
+          const { data } = await api.get('/users/profile');
+          set((state) => ({
+            userInfo: state.userInfo ? { ...state.userInfo, ...data } : data,
+            authReady: true,
+            error: null,
+          }));
+          return data;
+        } catch (error) {
+          set({ userInfo: null, authReady: true });
           throw error;
+        }
+      },
+
+      hydrateAuth: async () => {
+        set({ authReady: false });
+        try {
+          await useAuthStore.getState().syncProfile();
+        } catch {
+          set({ authReady: true });
         }
       },
 
       logout: async () => {
         try {
           await api.post('/users/logout');
-          set({ userInfo: null });
-        } catch (error) {
-          console.error("Logout error:", error);
+        } finally {
+          set({ userInfo: null, error: null, authReady: true });
         }
       },
 
       clearError: () => set({ error: null }),
+      markHydrated: () => set({ authReady: true }),
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({ userInfo: state.userInfo }),
+      onRehydrateStorage: () => (state) => {
+        state?.markHydrated();
+      },
     }
   )
 );
@@ -101,10 +135,19 @@ export const useProductStore = create((set, get) => ({
   fetchProducts: async (keyword = '') => {
     set({ loading: true, error: null });
     try {
-      const { data } = await api.get(`/products${keyword ? `?keyword=${keyword}` : ''}`);
-      set({ products: data.products || data, loading: false });
+      const params = new URLSearchParams();
+      if (keyword) {
+        params.set('keyword', keyword);
+      }
+
+      const query = params.toString();
+      const { data } = await api.get(`/products${query ? `?${query}` : ''}`);
+      set({ products: data.products || [], loading: false });
+      return data.products || [];
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to fetch products', loading: false });
+      const message = getErrorMessage(error, 'Failed to fetch products');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -113,8 +156,11 @@ export const useProductStore = create((set, get) => ({
     try {
       const { data } = await api.get(`/products/${id}`);
       set({ product: data, loading: false });
+      return data;
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to fetch product', loading: false });
+      const message = getErrorMessage(error, 'Failed to fetch product');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -122,11 +168,12 @@ export const useProductStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const { data } = await api.post('/products', productData);
-      set({ products: [...get().products, data], loading: false });
+      set({ products: [data, ...get().products], loading: false });
       return data;
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to create product', loading: false });
-      throw error;
+      const message = getErrorMessage(error, 'Failed to create product');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -134,11 +181,16 @@ export const useProductStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const { data } = await api.put(`/products/${id}`, productData);
-      set({ products: get().products.map(p => p._id === id ? data : p), loading: false });
+      set({
+        products: get().products.map((p) => (p._id === id ? data : p)),
+        product: data,
+        loading: false,
+      });
       return data;
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to update product', loading: false });
-      throw error;
+      const message = getErrorMessage(error, 'Failed to update product');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -146,10 +198,11 @@ export const useProductStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       await api.delete(`/products/${id}`);
-      set({ products: get().products.filter(p => p._id !== id), loading: false });
+      set({ products: get().products.filter((p) => p._id !== id), loading: false });
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to delete product', loading: false });
-      throw error;
+      const message = getErrorMessage(error, 'Failed to delete product');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   }
 }));
@@ -167,8 +220,9 @@ export const useOrderStore = create((set, get) => ({
       set({ loading: false });
       return data;
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to create order', loading: false });
-      throw error;
+      const message = getErrorMessage(error, 'Failed to create order');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -177,8 +231,11 @@ export const useOrderStore = create((set, get) => ({
     try {
       const { data } = await api.get('/orders/myorders');
       set({ orders: data, loading: false });
+      return data;
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to fetch orders', loading: false });
+      const message = getErrorMessage(error, 'Failed to fetch orders');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -187,8 +244,11 @@ export const useOrderStore = create((set, get) => ({
     try {
       const { data } = await api.get('/orders');
       set({ orders: data, loading: false });
+      return data;
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to fetch all orders', loading: false });
+      const message = getErrorMessage(error, 'Failed to fetch all orders');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -196,11 +256,12 @@ export const useOrderStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const { data } = await api.put(`/orders/${id}/deliver`);
-      set({ orders: get().orders.map(o => o._id === id ? data : o), loading: false });
+      set({ orders: get().orders.map((o) => o._id === id ? data : o), loading: false });
       return data;
     } catch (error) {
-      set({ error: error.response?.data?.message || 'Failed to mark order as delivered', loading: false });
-      throw error;
+      const message = getErrorMessage(error, 'Failed to mark order as delivered');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   }
 }));

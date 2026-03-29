@@ -4,6 +4,8 @@ import { Trash2, ArrowRight, ShieldCheck, Tag, ShoppingBag, Info, AlertTriangle,
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import { getPrimaryProductImage } from '../utils/media';
 
 const Cart = () => {
   const { userInfo } = useAuthStore();
@@ -111,7 +113,7 @@ const Cart = () => {
            rzp.open();
         }
      } catch (err) {
-        toast.error(err.response?.data?.message || 'Failed to place order');
+        toast.error(err.message || 'Failed to place order');
      } finally {
         setIsProcessing(false);
      }
@@ -167,7 +169,14 @@ const Cart = () => {
                         {/* Img & Title */}
                         <div className="col-span-6 w-full flex items-center gap-6">
                           <Link to={`/product/${item._id}`} className="shrink-0 w-24 h-24 bg-slate-50 dark:bg-dark-bg rounded-2xl overflow-hidden border border-slate-200 dark:border-dark-border shadow-sm">
-                            <img src={item.images && item.images.length > 0 ? item.images[0] : item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]" />
+                            <img
+                              src={getPrimaryProductImage(item)}
+                              alt={item.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
+                              onError={(e) => {
+                                e.currentTarget.src = getPrimaryProductImage({});
+                              }}
+                            />
                           </Link>
                           <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">{item.category}</span>
