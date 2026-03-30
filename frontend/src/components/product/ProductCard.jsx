@@ -4,6 +4,7 @@ import { useCartStore } from '../../store/useStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
 import toast from 'react-hot-toast';
 import { getPrimaryProductImage } from '../../utils/media';
+import { formatPrice } from '../../utils/price';
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCartStore();
@@ -82,9 +83,9 @@ const ProductCard = ({ product }) => {
         {/* Price & Action Row (Pushed to bottom) */}
         <div className="mt-auto flex items-end justify-between pt-4 border-t border-slate-100 dark:border-dark-border/50">
           <div className="flex flex-col">
-            <span className="text-sm text-slate-400 line-through mb-0.5">${(product.price * 1.2).toFixed(2)}</span>
+            <span className="text-sm text-slate-400 line-through mb-0.5">{formatPrice(product.price * 1.2)}</span>
             <span className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
-              ${product.price.toFixed(2)}
+              {formatPrice(product.price)}
             </span>
           </div>
           

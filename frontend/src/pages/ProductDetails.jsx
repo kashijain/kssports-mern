@@ -6,6 +6,7 @@ import { Star, Truck, ShieldCheck, Heart, Share2, ChevronRight, Check } from 'lu
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
+import { formatPrice } from '../utils/price';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -173,10 +174,10 @@ const ProductDetails = () => {
 
               <div className="flex items-end gap-4 mb-2">
                 <span className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
-                  ${product.price.toFixed(2)}
+                  {formatPrice(product.price)}
                 </span>
                 <span className="text-xl font-medium text-slate-400 line-through mb-1.5">
-                  ${(product.price * 1.25).toFixed(2)}
+                  {formatPrice(product.price * 1.25)}
                 </span>
                 <span className="text-sm font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full mb-1.5 border border-red-100 dark:border-red-900/50">Save 25%</span>
               </div>
@@ -246,7 +247,7 @@ const ProductDetails = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white">Free Shipping</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">On orders over $50</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">On eligible prepaid orders</p>
                 </div>
               </div>
               <div className="flex items-start gap-4 p-5 rounded-2xl bg-white dark:bg-dark-card border border-slate-100 dark:border-dark-border shadow-sm group hover:border-primary-600/30 transition-colors">

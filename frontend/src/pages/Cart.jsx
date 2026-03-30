@@ -6,6 +6,7 @@ import api from '../api/axios';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { getPrimaryProductImage } from '../utils/media';
+import { formatPrice } from '../utils/price';
 
 const Cart = () => {
   const { userInfo } = useAuthStore();
@@ -32,10 +33,10 @@ const Cart = () => {
     removeFromCart(id);
   };
 
-  const subtotal = cartItems.reduce((acc, item) => acc + item.qty * item.price, 0).toFixed(2);
+  const subtotal = cartItems.reduce((acc, item) => acc + item.qty * item.price, 0);
   const shipping = subtotal > 50 ? 0 : 15;
-  const tax = (subtotal * 0.08).toFixed(2);
-  const total = (Number(subtotal) + shipping + Number(tax)).toFixed(2);
+  const tax = Number((subtotal * 0.08).toFixed(2));
+  const total = Number((subtotal + shipping + tax).toFixed(2));
 
   const loadRazorpaySDK = () => {
      return new Promise((resolve) => {
@@ -183,7 +184,7 @@ const Cart = () => {
                             <Link to={`/product/${item._id}`} className="font-bold text-slate-900 dark:text-white hover:text-primary-600 transition-colors text-lg line-clamp-2 leading-tight">
                               {item.name}
                             </Link>
-                            <span className="text-slate-500 dark:text-slate-400 font-medium text-sm block sm:hidden mt-2">${item.price.toFixed(2)}</span>
+                           <span className="text-slate-500 dark:text-slate-400 font-medium text-sm block sm:hidden mt-2">{formatPrice(item.price)}</span>
                           </div>
                         </div>
                         
@@ -198,7 +199,7 @@ const Cart = () => {
 
                         {/* Price */}
                         <div className="col-span-2 w-full sm:w-auto hidden sm:flex justify-end items-center text-xl font-extrabold text-slate-900 dark:text-white h-12 pt-2 sm:pt-0">
-                          ${(item.price * item.qty).toFixed(2)}
+                          {formatPrice(item.price * item.qty)}
                         </div>
                         
                         {/* Remove Action */}
@@ -236,31 +237,31 @@ const Cart = () => {
                 <div className="space-y-4 mb-8 text-[15px] font-medium border-t border-slate-100 dark:border-dark-border pt-6">
                   <div className="flex justify-between text-slate-600 dark:text-slate-300">
                     <span>Subtotal</span>
-                    <span className="font-bold text-slate-900 dark:text-white">${subtotal}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-slate-600 dark:text-slate-300">
                     <span>Shipping</span>
                     {shipping === 0 ? (
                       <span className="font-bold text-green-500 uppercase tracking-widest text-xs mt-1">Free</span>
                     ) : (
-                      <span className="font-bold text-slate-900 dark:text-white">${shipping.toFixed(2)}</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{formatPrice(shipping)}</span>
                     )}
                   </div>
                   <div className="flex justify-between text-slate-600 dark:text-slate-300">
                     <span>Tax (8%)</span>
-                    <span className="font-bold text-slate-900 dark:text-white">${tax}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatPrice(tax)}</span>
                   </div>
                   
                   {shipping > 0 && (
                     <div className="p-4 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 text-primary-700 dark:text-primary-300 text-sm rounded-xl flex items-start gap-3 mt-4 leading-relaxed">
                        <Info size={18} className="shrink-0 mt-0.5 text-primary-500"/>
-                       <span>Add <span className="font-bold">${(50 - subtotal).toFixed(2)}</span> more to your cart to get <strong className="font-black text-primary-600 dark:text-primary-400">Free Shipping!</strong></span>
+                       <span>Add <span className="font-bold">{formatPrice(Math.max(0, 50 - subtotal))}</span> more to your cart to get <strong className="font-black text-primary-600 dark:text-primary-400">Free Shipping!</strong></span>
                     </div>
                   )}
 
                   <div className="border-t border-slate-200 dark:border-dark-border pt-6 pb-2 mt-6 flex justify-between items-end">
                     <span className="font-bold text-lg text-slate-900 dark:text-white uppercase tracking-wider">Total</span>
-                    <span className="font-black text-4xl text-slate-900 dark:text-white tracking-tight leading-none">${total}</span>
+                    <span className="font-black text-4xl text-slate-900 dark:text-white tracking-tight leading-none">{formatPrice(total)}</span>
                   </div>
                 </div>
 
@@ -358,7 +359,7 @@ const Cart = () => {
                 <div className="p-6 border-t border-slate-100 dark:border-dark-border bg-slate-50 dark:bg-dark-bg flex items-center justify-between gap-4 shrink-0">
                    <div className="flex flex-col">
                       <span className="text-xs uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">Total to Pay</span>
-                      <span className="text-2xl font-black text-slate-900 dark:text-white">${total}</span>
+                      <span className="text-2xl font-black text-slate-900 dark:text-white">{formatPrice(total)}</span>
                    </div>
                    <button form="checkoutAuthForm" disabled={isProcessing} className="btn-primary px-8 h-14 tracking-wide shadow-lg shadow-primary-600/20 w-full sm:w-auto disabled:opacity-50">
                       {isProcessing ? 'Processing...' : `Pay ${paymentMethod === 'Razorpay' ? 'Securely' : 'on Delivery'}`}
