@@ -2,23 +2,34 @@ import Product from '../models/Product.js';
 
 const DEFAULT_PRODUCT_IMAGE = '/uploads/product-placeholder.png';
 
-const normalizeUploadPath = (filePath = '') =>
-  `/${filePath.replace(/\\/g, '/').replace(/^\/+/, '')}`;
+const normalizeUploadPath = (filePath = '') => {
+  const normalizedPath = String(filePath).replace(/\\/g, '/');
+  const uploadsIndex = normalizedPath.toLowerCase().lastIndexOf('/uploads/');
+
+  if (uploadsIndex >= 0) {
+    return normalizedPath.slice(uploadsIndex);
+  }
+
+  const fileName = normalizedPath.split('/').filter(Boolean).pop();
+  return fileName ? `/uploads/${fileName}` : DEFAULT_PRODUCT_IMAGE;
+};
 
 const getIncomingImages = (req) => {
   if (req.files?.length) {
-    return req.files.map((file) => normalizeUploadPath(file.path));
+    return req.files.map((file) =>
+      normalizeUploadPath(file.filename || file.path)
+    );
   }
 
   if (Array.isArray(req.body.images)) {
-    return req.body.images.filter(Boolean);
+    return req.body.images.filter(Boolean).map(normalizeUploadPath);
   }
 
   if (typeof req.body.images === 'string' && req.body.images.trim()) {
     try {
       const parsed = JSON.parse(req.body.images);
       if (Array.isArray(parsed)) {
-        return parsed.filter(Boolean);
+        return parsed.filter(Boolean).map(normalizeUploadPath);
       }
     } catch {
       return req.body.images
@@ -29,7 +40,7 @@ const getIncomingImages = (req) => {
   }
 
   if (typeof req.body.image === 'string' && req.body.image.trim()) {
-    return [req.body.image.trim()];
+    return [normalizeUploadPath(req.body.image.trim())];
   }
 
   return [];

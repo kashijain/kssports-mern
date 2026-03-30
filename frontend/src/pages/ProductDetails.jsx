@@ -5,7 +5,7 @@ import { useWishlistStore } from '../store/useWishlistStore';
 import { Star, Truck, ShieldCheck, Heart, Share2, ChevronRight, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getImageUrl } from '../utils/media';
+import { getImageUrl, getPrimaryProductImage } from '../utils/media';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -31,7 +31,7 @@ const ProductDetails = () => {
   const galleryImages =
     product?.images?.length > 0
       ? product.images.map((image) => getImageUrl(image))
-      : [getImageUrl(product?.image)];
+      : [getPrimaryProductImage(product)];
   const productSpecifications = product?.specifications?.filter(
     (spec) => spec?.name && spec?.value
   ) || [];
@@ -136,8 +136,9 @@ const ProductDetails = () => {
                     <img
                       src={img}
                       className="w-full h-full object-cover bg-white dark:bg-dark-card"
+                      alt={`${product.name} ${i + 1}`}
                       onError={(e) => {
-                        e.currentTarget.src = getImageUrl();
+                        e.currentTarget.src = getPrimaryProductImage(product);
                       }}
                     />
                  </button>
