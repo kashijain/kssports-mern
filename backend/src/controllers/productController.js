@@ -27,17 +27,23 @@ const normalizeImageValue = (filePath = '') => {
 
 const uploadIncomingFiles = async (req) => {
   if (req.files?.length) {
-    if (!hasCloudinaryConfig()) {
-      throw new Error(
-        'Cloudinary is not configured. Product image uploads require CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
+    if (hasCloudinaryConfig()) {
+      const uploadedImages = await Promise.all(
+        req.files.map((file) => uploadBufferToCloudinary(file))
       );
+
+      return uploadedImages.filter(Boolean);
     }
 
-    const uploadedImages = await Promise.all(
-      req.files.map((file) => uploadBufferToCloudinary(file))
-    );
-
-    return uploadedImages.filter(Boolean);
+    return req.files
+      .map((file) =>
+        normalizeImageValue(
+          file.filename
+            ? `/uploads/${file.filename}`
+            : file.path || file.originalname
+        )
+      )
+      .filter(Boolean);
   }
 
   return [];
