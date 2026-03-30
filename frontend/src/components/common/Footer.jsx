@@ -98,7 +98,7 @@ const Footer = () => {
         {/* Bottom */}
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-slate-500">
-            © {new Date().getFullYear()} K.S. Sports. All rights reserved.
+            © {new Date().getFullYear()} K.S. Sports. All rights reserved Degion by kashish jain .
           </p>
           <div className="flex gap-4 text-sm text-slate-500">
             <Link to="/privacy">Privacy Policy</Link>

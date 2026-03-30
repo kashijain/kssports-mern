@@ -74,6 +74,10 @@ const productSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    features: {
+      type: [String],
+      default: [],
+    },
     specifications: {
       type: [specificationSchema],
       default: [],

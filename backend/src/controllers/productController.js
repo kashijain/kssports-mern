@@ -76,6 +76,33 @@ const getIncomingSpecifications = (req) => {
   return [];
 };
 
+const getIncomingFeatures = (req) => {
+  if (Array.isArray(req.body.features)) {
+    return req.body.features
+      .map((feature) => String(feature || '').trim())
+      .filter(Boolean);
+  }
+
+  if (typeof req.body.features === 'string' && req.body.features.trim()) {
+    try {
+      const parsed = JSON.parse(req.body.features);
+
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((feature) => String(feature || '').trim())
+          .filter(Boolean);
+      }
+    } catch {
+      return req.body.features
+        .split(',')
+        .map((feature) => feature.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+};
+
 export const getProducts = async (req, res) => {
   const pageSize = Number(req.query.pageSize) || 50;
   const page = Number(req.query.pageNumber) || 1;
@@ -124,6 +151,7 @@ export const createProduct = async (req, res) => {
 
   const images = getIncomingImages(req);
   const specifications = getIncomingSpecifications(req);
+  const features = getIncomingFeatures(req);
 
   if (!images.length) {
     res.status(400);
@@ -143,6 +171,7 @@ export const createProduct = async (req, res) => {
       codAvailable === true ||
       codAvailable === 'true' ||
       codAvailable === 'on',
+    features,
     specifications,
     numReviews: 0,
     description: description.trim(),
@@ -160,6 +189,8 @@ export const updateProduct = async (req, res) => {
   }
 
   const incomingImages = getIncomingImages(req);
+  const featuresProvided = req.body.features !== undefined;
+  const incomingFeatures = getIncomingFeatures(req);
   const specificationsProvided = req.body.specifications !== undefined;
   const incomingSpecifications = getIncomingSpecifications(req);
   const nextImages = incomingImages.length ? incomingImages : product.images;
@@ -180,6 +211,7 @@ export const updateProduct = async (req, res) => {
         req.body.codAvailable === 'true' ||
         req.body.codAvailable === 'on'
       : product.codAvailable;
+  product.features = featuresProvided ? incomingFeatures : product.features;
   product.specifications = specificationsProvided
     ? incomingSpecifications
     : product.specifications;

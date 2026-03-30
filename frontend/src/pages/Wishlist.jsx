@@ -1,14 +1,12 @@
 import React from 'react';
-import { useWishlistStore } from '../store/useStore';
-import { useWishlistStore as useWishlistCustomStore } from '../store/useWishlistStore';
+import { useWishlistStore } from '../store/useWishlistStore';
 import ProductCard from '../components/product/ProductCard';
-import { Heart, Search, ShoppingBag } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Wishlist = () => {
-  // Use the newly created custom wishlist store
-  const { wishlistItems, clearWishlist } = useWishlistCustomStore();
+  const { wishlistItems, clearWishlist } = useWishlistStore();
 
   return (
     <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-24">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCartStore, useAuthStore, useThemeStore } from '../../store/useStore';
+import { useWishlistStore } from '../../store/useWishlistStore';
 import { ShoppingBag, Heart, User, Menu, X, Moon, Sun, Search, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -8,12 +9,14 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { cartItems } = useCartStore();
+  const { wishlistItems } = useWishlistStore();
   const { userInfo, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const location = useLocation();
   const navigate = useNavigate();
 
   const cartItemsCount = cartItems.reduce((acc, item) => acc + item.qty, 0);
+  const wishlistCount = wishlistItems.length;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -90,8 +93,13 @@ const Navbar = () => {
             <Search size={20} />
           </button>
           
-          <Link to="/wishlist" className="text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors">
+          <Link to="/wishlist" className="relative text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors">
             <Heart size={20} />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center">
+                {wishlistCount}
+              </span>
+            )}
           </Link>
 
           <Link to="/cart" className="relative text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors">
@@ -168,7 +176,7 @@ const Navbar = () => {
               </button>
               
               <Link to="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
-                <Heart size={20} /> Wishlist
+                <Heart size={20} /> Wishlist {wishlistCount > 0 ? `(${wishlistCount})` : ''}
               </Link>
             </div>
 

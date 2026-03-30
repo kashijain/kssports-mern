@@ -17,7 +17,7 @@ const ProductDetails = () => {
   
   const { addToCart } = useCartStore();
   const { product, loading, fetchProductById } = useProductStore();
-  const { wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
+  const { wishlistItems, toggleWishlist } = useWishlistStore();
 
   useEffect(() => {
     fetchProductById(id);
@@ -33,6 +33,7 @@ const ProductDetails = () => {
     product?.images?.length > 0
       ? product.images.map((image) => getImageUrl(image))
       : [getPrimaryProductImage(product)];
+  const productFeatures = product?.features?.filter((feature) => String(feature || '').trim()) || [];
   const productSpecifications = product?.specifications?.filter(
     (spec) => spec?.name && spec?.value
   ) || [];
@@ -57,11 +58,11 @@ const ProductDetails = () => {
 
   const isWishlisted = wishlistItems.some((item) => item._id === product._id);
   const handleWishlistToggle = () => {
-    if (isWishlisted) {
-      removeFromWishlist(product._id);
+    const result = toggleWishlist(product);
+
+    if (result.removed) {
       toast.success('Removed from wishlist');
-    } else {
-      addToWishlist(product);
+    } else if (result.added) {
       toast.success('Added to wishlist');
     }
   };
@@ -280,13 +281,16 @@ const ProductDetails = () => {
                     <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-lg mb-6">
                       {product.description}
                     </p>
-                    <h4 className="text-slate-900 dark:text-white font-bold mb-4">Key Features:</h4>
-                    <ul className="space-y-3 text-slate-600 dark:text-slate-300 list-disc pl-5 marker:text-primary-600">
-                      <li>Grade 1 Premium English Willow</li>
-                      <li>Custom made for professional balance and unmatched ping</li>
-                      <li>Handcrafted by master bat makers with 10+ years experience</li>
-                      <li>Includes premium thick-padded bat cover and extra grip</li>
-                    </ul>
+                    {productFeatures.length > 0 && (
+                      <>
+                        <h4 className="text-slate-900 dark:text-white font-bold mb-4">Key Features:</h4>
+                        <ul className="space-y-3 text-slate-600 dark:text-slate-300 list-disc pl-5 marker:text-primary-600">
+                          {productFeatures.map((feature, index) => (
+                            <li key={`${feature}-${index}`}>{feature}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </motion.div>
                 )}
                 {activeTab === 'specifications' && (

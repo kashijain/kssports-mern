@@ -8,7 +8,7 @@ import { formatPrice } from '../../utils/price';
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCartStore();
-  const { wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
+  const { wishlistItems, toggleWishlist } = useWishlistStore();
 
   const isWishlisted = wishlistItems.some((item) => item._id === product._id);
 
@@ -20,11 +20,11 @@ const ProductCard = ({ product }) => {
 
   const handleWishlistToggle = (e) => {
     e.preventDefault();
-    if (isWishlisted) {
-      removeFromWishlist(product._id);
+    const result = toggleWishlist(product);
+
+    if (result.removed) {
       toast.success('Removed from wishlist');
-    } else {
-      addToWishlist(product);
+    } else if (result.added) {
       toast.success('Added to wishlist');
     }
   };
