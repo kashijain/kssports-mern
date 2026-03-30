@@ -19,64 +19,111 @@ const Contact = () => {
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
             
             {/* Contact Info */}
-            <div className="lg:col-span-5 space-y-8">
-               <div className="bg-slate-900 dark:bg-dark-card rounded-3xl p-8 md:p-10 shadow-premium dark:shadow-dark-premium text-white relative overflow-hidden h-full">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/20 rounded-full blur-[80px] pointer-events-none"></div>
-                  
-                  <h3 className="text-2xl font-bold mb-8 relative z-10">Contact Information</h3>
-                  
-                  <div className="space-y-8 relative z-10">
-                     <div className="flex items-start gap-5">
-                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                           <MapPin className="text-primary-400" size={24} />
-                        </div>
-                        <div>
-                           <h4 className="font-bold text-lg mb-1">Headquarters</h4>
-                           <p className="text-slate-400 leading-relaxed">124 Sports Avenue, Athletics District<br/>New York, NY 10001</p>
-                        </div>
-                     </div>
-                     
-                     <div className="flex items-start gap-5">
-                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                           <Phone className="text-primary-400" size={24} />
-                        </div>
-                        <div>
-                           <h4 className="font-bold text-lg mb-1">Phone</h4>
-                           <p className="text-slate-400 flex flex-col gap-1">
-                              <span>Toll-Free: +1 (800) 123-4567</span>
-                              <span>Local: +1 (212) 555-0198</span>
-                           </p>
-                        </div>
-                     </div>
+<div className="lg:col-span-5 space-y-8">
+  <div className="bg-slate-900 dark:bg-dark-card rounded-3xl p-8 md:p-10 shadow-premium text-white relative overflow-hidden h-full">
+    
+    <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/20 rounded-full blur-[80px]"></div>
+    
+    <h3 className="text-2xl font-bold mb-8 relative z-10">Contact Information</h3>
 
-                     <div className="flex items-start gap-5">
-                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                           <Mail className="text-primary-400" size={24} />
-                        </div>
-                        <div>
-                           <h4 className="font-bold text-lg mb-1">Email</h4>
-                           <p className="text-slate-400 flex flex-col gap-1">
-                              <span>support@kssports.com</span>
-                              <span>wholesale@kssports.com</span>
-                           </p>
-                        </div>
-                     </div>
+    <div className="space-y-8 relative z-10">
 
-                     <div className="flex items-start gap-5">
-                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                           <Clock className="text-primary-400" size={24} />
-                        </div>
-                        <div>
-                           <h4 className="font-bold text-lg mb-1">Working Hours</h4>
-                           <p className="text-slate-400 flex flex-col gap-1">
-                              <span>Monday - Friday: 9am - 8pm</span>
-                              <span>Saturday - Sunday: 10am - 6pm</span>
-                           </p>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-            </div>
+      {/* ADDRESS */}
+      <div className="flex items-start gap-5">
+        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+          <MapPin className="text-primary-400" size={24} />
+        </div>
+        <div>
+          <h4 className="font-bold text-lg mb-1">Headquarters</h4>
+          <p className="text-slate-400 leading-relaxed">
+            K.S. Sports, Shiv Colony<br/>
+            Main Kaithal Road, Karnal<br/>
+            Haryana, India - 132001
+          </p>
+        </div>
+      </div>
+
+      {/* PHONE */}
+      <div className="flex items-start gap-5">
+        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+          <Phone className="text-primary-400" size={24} />
+        </div>
+        <div>
+          <h4 className="font-bold text-lg mb-1">Phone</h4>
+          <p className="text-slate-400 mb-2">+91 7082252531</p>
+
+          <a
+            href="tel:+917082252531"
+            className="bg-green-500 px-4 py-2 rounded-lg text-white text-sm"
+          >
+            Call Now
+          </a>
+        </div>
+      </div>
+
+      {/* EMAIL */}
+      <div className="flex items-start gap-5">
+        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+          <Mail className="text-primary-400" size={24} />
+        </div>
+        <div>
+          <h4 className="font-bold text-lg mb-1">Email</h4>
+          <p className="text-slate-400 flex flex-col gap-1">
+            <span>ronishamra70822@gmail.com</span>
+            <span>ronikssports@gmail.com</span>
+          </p>
+        </div>
+      </div>
+
+      {/* WORKING HOURS */}
+      <div className="flex items-start gap-5">
+        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+          <Clock className="text-primary-400" size={24} />
+        </div>
+        <div>
+          <h4 className="font-bold text-lg mb-1">Working Hours</h4>
+          <p className="text-slate-400 flex flex-col gap-1">
+            <span>Monday - Saturday: 10 AM - 8 PM</span>
+            <span>Sunday: Holiday (On-call booking available)</span>
+          </p>
+        </div>
+      </div>
+
+      {/* SOCIAL + WHATSAPP */}
+      <div className="flex gap-3 flex-wrap mt-4">
+
+        <a
+          href="https://wa.me/917082252531?text=Hi%20I%20want%20to%20buy%20a%20bat"
+          target="_blank"
+          className="bg-green-600 px-4 py-2 rounded-lg text-white text-sm"
+        >
+          WhatsApp
+        </a>
+
+        <a
+          href="https://instagram.com/kssportsknl"
+          target="_blank"
+          className="bg-pink-500 px-4 py-2 rounded-lg text-white text-sm"
+        >
+          Instagram
+        </a>
+
+      </div>
+
+      {/* GOOGLE MAP */}
+      <div className="mt-6 rounded-xl overflow-hidden">
+        <iframe
+          src="https://www.google.com/maps?q=Karnal,Haryana&output=embed"
+          width="100%"
+          height="250"
+          style={{ border: 0 }}
+          loading="lazy"
+        ></iframe>
+      </div>
+
+    </div>
+  </div>
+</div>
 
             {/* Contact Form */}
             <div className="lg:col-span-7">
