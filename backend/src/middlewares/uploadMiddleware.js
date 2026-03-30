@@ -1,25 +1,6 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 
-const uploadDir = path.resolve('uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename(req, file, cb) {
-    const safeName = path
-      .basename(file.originalname, path.extname(file.originalname))
-      .replace(/[^a-zA-Z0-9-_]/g, '-')
-      .toLowerCase();
-
-    cb(null, `${safeName}-${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 function checkFileType(file, cb) {
   const allowedMimeTypes = [

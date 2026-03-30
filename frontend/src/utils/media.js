@@ -5,6 +5,15 @@ const FALLBACK_IMAGE =
 
 const normalizeImagePath = (imagePath = '') => {
   const normalizedPath = String(imagePath).replace(/\\/g, '/').trim();
+
+  if (!normalizedPath) {
+    return normalizedPath;
+  }
+
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    return normalizedPath;
+  }
+
   const uploadsIndex = normalizedPath.toLowerCase().lastIndexOf('/uploads/');
 
   if (uploadsIndex >= 0) {

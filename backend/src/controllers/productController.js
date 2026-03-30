@@ -1,9 +1,20 @@
 import Product from '../models/Product.js';
+import { hasCloudinaryConfig } from '../config/cloudinary.js';
+import { uploadBufferToCloudinary } from '../utils/uploadToCloudinary.js';
 
 const DEFAULT_PRODUCT_IMAGE = '/uploads/product-placeholder.png';
 
-const normalizeUploadPath = (filePath = '') => {
-  const normalizedPath = String(filePath).replace(/\\/g, '/');
+const normalizeImageValue = (filePath = '') => {
+  const normalizedPath = String(filePath).replace(/\\/g, '/').trim();
+
+  if (!normalizedPath) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    return normalizedPath;
+  }
+
   const uploadsIndex = normalizedPath.toLowerCase().lastIndexOf('/uploads/');
 
   if (uploadsIndex >= 0) {
@@ -14,36 +25,52 @@ const normalizeUploadPath = (filePath = '') => {
   return fileName ? `/uploads/${fileName}` : DEFAULT_PRODUCT_IMAGE;
 };
 
-const getIncomingImages = (req) => {
+const uploadIncomingFiles = async (req) => {
   if (req.files?.length) {
-    return req.files.map((file) =>
-      normalizeUploadPath(file.filename || file.path)
+    if (!hasCloudinaryConfig()) {
+      throw new Error(
+        'Cloudinary is not configured. Product image uploads require CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
+      );
+    }
+
+    const uploadedImages = await Promise.all(
+      req.files.map((file) => uploadBufferToCloudinary(file))
     );
+
+    return uploadedImages.filter(Boolean);
   }
 
+  return [];
+};
+
+const getIncomingImages = (req) => {
+  const bodyImages = [];
+
   if (Array.isArray(req.body.images)) {
-    return req.body.images.filter(Boolean).map(normalizeUploadPath);
+    bodyImages.push(...req.body.images);
   }
 
   if (typeof req.body.images === 'string' && req.body.images.trim()) {
     try {
       const parsed = JSON.parse(req.body.images);
       if (Array.isArray(parsed)) {
-        return parsed.filter(Boolean).map(normalizeUploadPath);
+        bodyImages.push(...parsed);
       }
     } catch {
-      return req.body.images
+      bodyImages.push(
+        ...req.body.images
         .split(',')
         .map((image) => image.trim())
-        .filter(Boolean);
+        .filter(Boolean)
+      );
     }
   }
 
   if (typeof req.body.image === 'string' && req.body.image.trim()) {
-    return [normalizeUploadPath(req.body.image.trim())];
+    bodyImages.push(req.body.image.trim());
   }
 
-  return [];
+  return bodyImages.filter(Boolean).map(normalizeImageValue);
 };
 
 const getIncomingSpecifications = (req) => {
@@ -149,7 +176,8 @@ export const createProduct = async (req, res) => {
     throw new Error('Name, price, brand, category, and description are required');
   }
 
-  const images = getIncomingImages(req);
+  const uploadedImages = await uploadIncomingFiles(req);
+  const images = uploadedImages.length ? uploadedImages : getIncomingImages(req);
   const specifications = getIncomingSpecifications(req);
   const features = getIncomingFeatures(req);
 
@@ -188,7 +216,8 @@ export const updateProduct = async (req, res) => {
     throw new Error('Product not found');
   }
 
-  const incomingImages = getIncomingImages(req);
+  const uploadedImages = await uploadIncomingFiles(req);
+  const incomingImages = uploadedImages.length ? uploadedImages : getIncomingImages(req);
   const featuresProvided = req.body.features !== undefined;
   const incomingFeatures = getIncomingFeatures(req);
   const specificationsProvided = req.body.specifications !== undefined;
