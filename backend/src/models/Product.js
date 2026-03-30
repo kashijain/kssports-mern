@@ -25,6 +25,24 @@ const reviewSchema = mongoose.Schema(
   }
 );
 
+const specificationSchema = mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    value: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const productSchema = mongoose.Schema(
   {
     user: {
@@ -55,6 +73,10 @@ const productSchema = mongoose.Schema(
     description: {
       type: String,
       required: true,
+    },
+    specifications: {
+      type: [specificationSchema],
+      default: [],
     },
     reviews: [reviewSchema],
     rating: {

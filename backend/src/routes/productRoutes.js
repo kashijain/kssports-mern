@@ -15,7 +15,7 @@ router.route('/').get(getProducts).post(protect, seller, upload.array('images', 
 router
   .route('/:id')
   .get(getProductById)
-  .put(protect, seller, updateProduct)
+  .put(protect, seller, upload.array('images', 4), updateProduct)
   .delete(protect, seller, deleteProduct);
 
 export default router;

@@ -1,102 +1,101 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
+import {
+  canRegisterAsSeller,
+  syncUserRoleWithWhitelist,
+} from '../utils/sellerAccess.js';
 
-// @desc    Auth user & get token
-// @route   POST /api/users/login
-// @access  Public
+const formatUserResponse = (user, token) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  token,
+});
+
 export const authUser = async (req, res) => {
-  const { email, password } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
+  const { password } = req.body;
 
-  const user = await User.findOne({ email });
-
-  if (user && (await user.matchPassword(password))) {
-    const token = generateToken(res, user._id);
-
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token,
-    });
-  } else {
-    res.status(401).json({ message: 'Invalid email or password' });
+  if (!email || !password) {
+    res.status(400);
+    throw new Error('Email and password are required');
   }
+
+  let user = await User.findOne({ email });
+
+  if (!user || !(await user.matchPassword(password))) {
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
+  user = await syncUserRoleWithWhitelist(user);
+  const token = generateToken(res, user._id);
+
+  res.json(formatUserResponse(user, token));
 };
 
-// @desc    Register a new user
-// @route   POST /api/users
-// @access  Public
 export const registerUser = async (req, res) => {
-  const { name, email, password, role, sellerSecret } = req.body;
+  const name = req.body.name?.trim();
+  const email = req.body.email?.trim().toLowerCase();
+  const { password, role, sellerSecret } = req.body;
+
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error('Name, email, and password are required');
+  }
 
   const userExists = await User.findOne({ email });
 
   if (userExists) {
-    res.status(400).json({ message: 'User already exists' });
-    return;
+    res.status(400);
+    throw new Error('User already exists');
   }
 
   let finalRole = 'customer';
-  
+
   if (role === 'seller') {
-    const envSecret = process.env.SELLER_SECRET ? process.env.SELLER_SECRET.trim() : '';
-    const providedSecret = sellerSecret ? sellerSecret.trim() : '';
-    
-    if (!envSecret || providedSecret !== envSecret) {
-      res.status(401).json({ message: 'Invalid seller secret key' });
-      return;
+    const sellerCheck = canRegisterAsSeller({ name, email, sellerSecret });
+
+    if (!sellerCheck.allowed) {
+      res.status(403);
+      throw new Error(sellerCheck.message);
     }
+
     finalRole = 'seller';
   }
 
-  const user = await User.create({
+  let user = await User.create({
     name,
     email,
     password,
     role: finalRole,
   });
 
-  if (user) {
-    const token = generateToken(res, user._id);
+  user = await syncUserRoleWithWhitelist(user);
+  const token = generateToken(res, user._id);
 
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token,
-    });
-  } else {
-    res.status(400).json({ message: 'Invalid user data' });
-  }
+  res.status(201).json(formatUserResponse(user, token));
 };
 
-// @desc    Logout user / clear cookie
-// @route   POST /api/users/logout
-// @access  Public
 export const logoutUser = (req, res) => {
   res.cookie('jwt', '', {
     httpOnly: true,
     expires: new Date(0),
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   });
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private
 export const getUserProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
 
-  if (user) {
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
-  } else {
-    res.status(404).json({ message: 'User not found' });
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
   }
+
+  const syncedUser = await syncUserRoleWithWhitelist(user);
+  res.json(formatUserResponse(syncedUser));
 };

@@ -32,6 +32,9 @@ const ProductDetails = () => {
     product?.images?.length > 0
       ? product.images.map((image) => getImageUrl(image))
       : [getImageUrl(product?.image)];
+  const productSpecifications = product?.specifications?.filter(
+    (spec) => spec?.name && spec?.value
+  ) || [];
 
   if (loading || !product) return (
     <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-12">
@@ -286,10 +289,18 @@ const ProductDetails = () => {
                 )}
                 {activeTab === 'specifications' && (
                   <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{duration:0.3}} className="space-y-1">
-                     <div className="flex justify-between py-4 border-b border-slate-100 dark:border-dark-border"><span className="text-slate-500 font-medium">Weight</span><span className="font-bold text-slate-900 dark:text-white">1140g - 1200g</span></div>
-                     <div className="flex justify-between py-4 border-b border-slate-100 dark:border-dark-border"><span className="text-slate-500 font-medium">Handle Type</span><span className="font-bold text-slate-900 dark:text-white">Short Handle (Semi-Oval)</span></div>
-                     <div className="flex justify-between py-4 border-b border-slate-100 dark:border-dark-border"><span className="text-slate-500 font-medium">Willow</span><span className="font-bold text-slate-900 dark:text-white">English Grade 1</span></div>
-                     <div className="flex justify-between py-4 border-b border-slate-100 dark:border-dark-border"><span className="text-slate-500 font-medium">Sweet Spot</span><span className="font-bold text-slate-900 dark:text-white">Mid to Low</span></div>
+                     {productSpecifications.length > 0 ? (
+                       productSpecifications.map((spec, index) => (
+                         <div key={`${spec.name}-${index}`} className="flex justify-between py-4 border-b border-slate-100 dark:border-dark-border gap-6">
+                           <span className="text-slate-500 font-medium">{spec.name}</span>
+                           <span className="font-bold text-slate-900 dark:text-white text-right">{spec.value}</span>
+                         </div>
+                       ))
+                     ) : (
+                       <div className="py-8 text-center text-slate-500 dark:text-slate-400">
+                         Specifications will appear here when the seller adds them.
+                       </div>
+                     )}
                   </motion.div>
                 )}
                 {activeTab === 'reviews' && (
