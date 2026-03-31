@@ -20,7 +20,7 @@ const Shop = () => {
 
   const { products, loading, fetchProducts } = useProductStore();
 
-  const categories = ["All", "Bats", "Balls", "Shoes", "Kits"];
+  const categories = ["All", "Bats", "Ball", "Shoes", "Kits","others"];
 
   useEffect(() => {
     if (typeof fetchProducts === "function") {
