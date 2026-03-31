@@ -402,6 +402,22 @@ export const updateOrderToDelivered = async (req, res) => {
   res.json(updatedOrder);
 };
 
+export const deleteOrder = async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+
+  await order.deleteOne();
+
+  res.json({
+    success: true,
+    message: 'Order deleted successfully',
+  });
+};
+
 export const getMyOrders = async (req, res) => {
   const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
   res.json(orders);

@@ -263,5 +263,17 @@ export const useOrderStore = create((set, get) => ({
       set({ error: message, loading: false });
       throw new Error(message);
     }
+  },
+
+  deleteOrder: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      await api.delete(`/orders/${id}`);
+      set({ orders: get().orders.filter((o) => o._id !== id), loading: false });
+    } catch (error) {
+      const message = getErrorMessage(error, 'Failed to delete order');
+      set({ error: message, loading: false });
+      throw new Error(message);
+    }
   }
 }));

@@ -10,6 +10,8 @@ import userRoutes from './routes/userRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import adminInventoryRoutes from './routes/adminInventoryRoutes.js';
+import adminReportRoutes from './routes/adminReportRoutes.js';
 
 dotenv.config();
 
@@ -59,6 +61,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/admin-inventory', adminInventoryRoutes);
+app.use('/api/admin-reports', adminReportRoutes);
 
 const __dirname = path.resolve();
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));

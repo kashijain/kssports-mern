@@ -4,6 +4,7 @@ import {
   getOrderById,
   updateOrderToPaid,
   updateOrderToDelivered,
+  deleteOrder,
   getMyOrders,
   getOrders,
   cancelUnpaidOrder,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.route('/').post(protect, addOrderItems).get(protect, seller, getOrders);
 router.route('/myorders').get(protect, getMyOrders);
 router.route('/:id').get(protect, getOrderById);
+router.route('/:id').delete(protect, seller, deleteOrder);
 router.route('/:id/pay').put(protect, updateOrderToPaid);
 router.route('/:id/cancel').delete(protect, cancelUnpaidOrder);
 router.route('/:id/deliver').put(protect, seller, updateOrderToDelivered);

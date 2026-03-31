@@ -72,6 +72,9 @@ const App = () => {
               <Route path="/admin/manage-products" element={<Dashboard />} />
               <Route path="/admin/edit-product/:id" element={<Dashboard />} />
               <Route path="/admin/orders" element={<Dashboard />} />
+              <Route path="/admin/upload-stock-sheet" element={<Dashboard />} />
+              <Route path="/admin/offline-sales" element={<Dashboard />} />
+              <Route path="/admin/sales-report" element={<Dashboard />} />
             </Route>
 
             <Route path="/about" element={<About />} />
