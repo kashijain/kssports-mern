@@ -30,6 +30,10 @@ const calculateOrderAmountsFromItems = (orderItems) => {
 
 const getRazorpayInstance = () => {
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.error('Razorpay configuration error:', {
+      hasKeyId: Boolean(process.env.RAZORPAY_KEY_ID),
+      hasKeySecret: Boolean(process.env.RAZORPAY_KEY_SECRET),
+    });
     const error = new Error('Razorpay keys not configured');
     error.statusCode = 500;
     throw error;
@@ -206,34 +210,58 @@ export const getOrderById = async (req, res) => {
 };
 
 export const createPaymentOrder = async (req, res) => {
-  const parsedAmount = Number(req.body.baseAmount);
+  try {
+    console.log('Create Razorpay order request body:', req.body);
 
-  if (!parsedAmount || parsedAmount <= 0) {
-    res.status(400);
-    throw new Error('A valid base amount is required');
+    const parsedAmount = Number(req.body.baseAmount);
+
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid base amount is required',
+      });
+    }
+
+    const { baseAmount, convenienceCharge, tax, finalAmount } =
+      calculateOrderAmounts(parsedAmount);
+
+    const amountInPaise = Math.round(finalAmount * 100);
+    const instance = getRazorpayInstance();
+
+    const order = await instance.orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `kssports_${Date.now()}`,
+    });
+
+    return res.json({
+      success: true,
+      message: 'Razorpay order created successfully',
+      order_id: order.id,
+      baseAmount,
+      convenienceCharge,
+      tax,
+      finalAmount,
+      currency: order.currency,
+      amount: order.amount,
+      key_id: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (error) {
+    console.error('Razorpay create-order error:', error.message, {
+      stack: error.stack,
+      body: req.body,
+    });
+
+    const statusCode = error.statusCode || 500;
+
+    return res.status(statusCode).json({
+      success: false,
+      message:
+        statusCode === 500
+          ? 'Failed to create Razorpay order'
+          : error.message,
+    });
   }
-
-  const { baseAmount, convenienceCharge, tax, finalAmount } =
-    calculateOrderAmounts(parsedAmount);
-
-  const instance = getRazorpayInstance();
-
-  const order = await instance.orders.create({
-    amount: Math.round(finalAmount * 100),
-    currency: 'INR',
-    receipt: `kssports_${Date.now()}`,
-  });
-
-  res.json({
-    success: true,
-    order_id: order.id,
-    baseAmount,
-    convenienceCharge,
-    tax,
-    finalAmount,
-    currency: order.currency,
-    key_id: process.env.RAZORPAY_KEY_ID,
-  });
 };
 
 export const verifyPaymentSignature = async (req, res) => {
