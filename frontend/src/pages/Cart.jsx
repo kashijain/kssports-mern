@@ -1,12 +1,14 @@
 import { useCartStore, useAuthStore, useOrderStore } from '../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, ArrowRight, ShieldCheck, Tag, ShoppingBag, Info, AlertTriangle, X } from 'lucide-react';
+import { Trash2, ArrowRight, ShieldCheck, Tag, ShoppingBag, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { getPrimaryProductImage } from '../utils/media';
 import { formatPrice } from '../utils/price';
+
+const roundCurrency = (value) => Number(Number(value || 0).toFixed(2));
 
 const Cart = () => {
   const { userInfo } = useAuthStore();
@@ -34,18 +36,39 @@ const Cart = () => {
   };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.qty * item.price, 0);
-  const shipping = subtotal > 50 ? 0 : 15;
-  const tax = Number((subtotal * 0.08).toFixed(2));
-  const total = Number((subtotal + shipping + tax).toFixed(2));
+  const convenienceCharge = roundCurrency(subtotal * 0.02);
+  const tax = 0;
+  const total = roundCurrency(subtotal + convenienceCharge);
 
   const loadRazorpaySDK = () => {
      return new Promise((resolve) => {
+        if (window.Razorpay) {
+           resolve(true);
+           return;
+        }
+
         const script = document.createElement('script');
         script.src = 'https://checkout.razorpay.com/v1/checkout.js';
         script.onload = () => { resolve(true); };
         script.onerror = () => { resolve(false); };
         document.body.appendChild(script);
      });
+  };
+
+  const cancelPendingOrder = async (orderId, message) => {
+     if (!orderId) {
+        return;
+     }
+
+     try {
+        await api.delete(`/orders/${orderId}/cancel`);
+     } catch (error) {
+        console.error('Failed to cancel unpaid order', error);
+     }
+
+     if (message) {
+        toast.error(message);
+     }
   };
 
   const handlePlaceOrder = async (e) => {
@@ -58,61 +81,102 @@ const Cart = () => {
 
      setIsProcessing(true);
      try {
-        const order = await createOrder({
+        if (paymentMethod === 'COD') {
+           await createOrder({
+              orderItems: cartItems,
+              shippingAddress,
+              paymentMethod,
+              itemsPrice: Number(subtotal),
+              convenienceCharge,
+              taxPrice: Number(tax),
+              shippingPrice: 0,
+              totalPrice: Number(total),
+           });
+
+           toast.success('Order placed successfully via Cash on Delivery!');
+           clearCart();
+           setShowCheckout(false);
+           navigate('/profile');
+           return;
+        }
+
+        const pendingOrder = await createOrder({
            orderItems: cartItems,
            shippingAddress,
            paymentMethod,
            itemsPrice: Number(subtotal),
+           convenienceCharge,
            taxPrice: Number(tax),
-           shippingPrice: shipping,
+           shippingPrice: 0,
            totalPrice: Number(total),
         });
 
-        if (paymentMethod === 'COD') {
-           toast.success('Order placed successfully via Cash on Delivery!');
-           clearCart();
-           navigate('/profile');
-        } else {
-           const sdkReady = await loadRazorpaySDK();
-           if (!sdkReady) { toast.error('Razorpay SDK failed to load'); setIsProcessing(false); return; }
-
-           const { data: rzpyOrder } = await api.post('/orders/razorpay', { amount: Number(total) });
-
-           const options = {
-              key: rzpyOrder.key_id,
-              amount: rzpyOrder.amount,
-              currency: rzpyOrder.currency,
-              name: "K.S. Sports",
-              description: "Premium Sports Gear",
-              order_id: rzpyOrder.id,
-              handler: async function (response) {
-                 try {
-                    await api.put(`/orders/${order._id}/pay`, {
-                       razorpay_payment_id: response.razorpay_payment_id,
-                       razorpay_order_id: response.razorpay_order_id,
-                       razorpay_signature: response.razorpay_signature
-                    });
-                    toast.success('Payment successful! Order placed.');
-                    clearCart();
-                    navigate('/profile');
-                 } catch (err) {
-                    toast.error('Payment verification failed.');
-                 }
-              },
-              prefill: { name: userInfo.name, email: userInfo.email },
-              theme: { color: "#2563EB" },
-              modal: {
-                 ondismiss: function() {
-                    toast.error('Payment cancelled. Order saved as unpaid.');
-                    clearCart();
-                    navigate('/profile');
-                 }
-              }
-           };
-
-           const rzp = new window.Razorpay(options);
-           rzp.open();
+        const sdkReady = await loadRazorpaySDK();
+        if (!sdkReady) {
+           await cancelPendingOrder(pendingOrder._id, 'Razorpay SDK failed to load');
+           return;
         }
+
+        const { data: paymentOrder } = await api.post('/payment/create-order', {
+           baseAmount: Number(subtotal),
+        });
+
+        let hasHandledPendingOrder = false;
+        const cancelPendingPaymentFlow = async (message) => {
+           if (hasHandledPendingOrder) {
+              return;
+           }
+
+           hasHandledPendingOrder = true;
+           await cancelPendingOrder(pendingOrder._id, message);
+        };
+
+        const options = {
+           key: paymentOrder.key_id,
+           amount: paymentOrder.finalAmount * 100,
+           currency: paymentOrder.currency,
+           name: "K.S. Sports",
+           description: "Premium Sports Gear",
+           order_id: paymentOrder.order_id,
+           handler: async function (response) {
+              try {
+                 const { data: verification } = await api.post('/payment/verify', {
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature
+                 });
+
+                 if (!verification.success) {
+                    throw new Error(verification.message || 'Payment verification failed.');
+                 }
+
+                 await api.put(`/orders/${pendingOrder._id}/pay`, {
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature
+                 });
+                 toast.success('Payment successful! Order placed.');
+                 clearCart();
+                 setShowCheckout(false);
+                 navigate('/profile');
+              } catch (error) {
+                 await cancelPendingPaymentFlow('Payment verification failed.');
+              }
+           },
+           prefill: { name: userInfo.name, email: userInfo.email },
+           theme: { color: "#2563EB" },
+           modal: {
+              ondismiss: async function() {
+                 await cancelPendingPaymentFlow('Payment cancelled.');
+              }
+           }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', async function () {
+           await cancelPendingPaymentFlow('Payment failed. Please try again.');
+        });
+        rzp.open();
      } catch (err) {
         toast.error(err.message || 'Failed to place order');
      } finally {
@@ -236,31 +300,20 @@ const Cart = () => {
                 {/* Subtotals */}
                 <div className="space-y-4 mb-8 text-[15px] font-medium border-t border-slate-100 dark:border-dark-border pt-6">
                   <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                    <span>Subtotal</span>
+                    <span>Product Price</span>
                     <span className="font-bold text-slate-900 dark:text-white">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                    <span>Shipping</span>
-                    {shipping === 0 ? (
-                      <span className="font-bold text-green-500 uppercase tracking-widest text-xs mt-1">Free</span>
-                    ) : (
-                      <span className="font-bold text-slate-900 dark:text-white">{formatPrice(shipping)}</span>
-                    )}
+                    <span>Convenience Charge (2%)</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatPrice(convenienceCharge)}</span>
                   </div>
                   <div className="flex justify-between text-slate-600 dark:text-slate-300">
-                    <span>Tax (8%)</span>
+                    <span>Tax</span>
                     <span className="font-bold text-slate-900 dark:text-white">{formatPrice(tax)}</span>
                   </div>
-                  
-                  {shipping > 0 && (
-                    <div className="p-4 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 text-primary-700 dark:text-primary-300 text-sm rounded-xl flex items-start gap-3 mt-4 leading-relaxed">
-                       <Info size={18} className="shrink-0 mt-0.5 text-primary-500"/>
-                       <span>Add <span className="font-bold">{formatPrice(Math.max(0, 50 - subtotal))}</span> more to your cart to get <strong className="font-black text-primary-600 dark:text-primary-400">Free Shipping!</strong></span>
-                    </div>
-                  )}
 
                   <div className="border-t border-slate-200 dark:border-dark-border pt-6 pb-2 mt-6 flex justify-between items-end">
-                    <span className="font-bold text-lg text-slate-900 dark:text-white uppercase tracking-wider">Total</span>
+                    <span className="font-bold text-lg text-slate-900 dark:text-white uppercase tracking-wider">Total Amount</span>
                     <span className="font-black text-4xl text-slate-900 dark:text-white tracking-tight leading-none">{formatPrice(total)}</span>
                   </div>
                 </div>
@@ -362,7 +415,7 @@ const Cart = () => {
                       <span className="text-2xl font-black text-slate-900 dark:text-white">{formatPrice(total)}</span>
                    </div>
                    <button form="checkoutAuthForm" disabled={isProcessing} className="btn-primary px-8 h-14 tracking-wide shadow-lg shadow-primary-600/20 w-full sm:w-auto disabled:opacity-50">
-                      {isProcessing ? 'Processing...' : `Pay ${paymentMethod === 'Razorpay' ? 'Securely' : 'on Delivery'}`}
+                      {isProcessing ? 'Processing...' : paymentMethod === 'Razorpay' ? 'Pay Now' : 'Place Order'}
                    </button>
                 </div>
              </motion.div>
