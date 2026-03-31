@@ -13,6 +13,16 @@ import paymentRoutes from './routes/paymentRoutes.js';
 
 dotenv.config();
 
+console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? 'OK' : 'MISSING');
+console.log(
+  'RAZORPAY_KEY_SECRET:',
+  process.env.RAZORPAY_KEY_SECRET ? 'OK' : 'MISSING'
+);
+console.log(
+  'CLOUDINARY:',
+  process.env.CLOUDINARY_CLOUD_NAME ? 'OK' : 'MISSING'
+);
+
 const app = express();
 
 // Connect to MongoDB

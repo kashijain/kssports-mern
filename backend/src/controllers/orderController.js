@@ -218,13 +218,14 @@ export const getOrderById = async (req, res) => {
 
 export const createPaymentOrder = async (req, res) => {
   try {
-    console.log('Create Razorpay order request body:', req.body);
+    console.log('REQ BODY:', req.body);
     console.log('Razorpay keys available:', {
       hasKeyId: Boolean(getTrimmedEnvValue('RAZORPAY_KEY_ID')),
       hasKeySecret: Boolean(getTrimmedEnvValue('RAZORPAY_KEY_SECRET')),
     });
 
-    const parsedAmount = Number(req.body.baseAmount);
+    const { baseAmount } = req.body;
+    const parsedAmount = Number(baseAmount);
 
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({
