@@ -3,6 +3,8 @@ import Razorpay from 'razorpay';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 
+const getTrimmedEnvValue = (key) => String(process.env[key] || '').trim();
+
 const roundCurrency = (value) => Number(Number(value || 0).toFixed(2));
 
 const calculateOrderAmounts = (baseAmount) => {
@@ -29,10 +31,13 @@ const calculateOrderAmountsFromItems = (orderItems) => {
 };
 
 const getRazorpayInstance = () => {
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  const razorpayKeyId = getTrimmedEnvValue('RAZORPAY_KEY_ID');
+  const razorpayKeySecret = getTrimmedEnvValue('RAZORPAY_KEY_SECRET');
+
+  if (!razorpayKeyId || !razorpayKeySecret) {
     console.error('Razorpay configuration error:', {
-      hasKeyId: Boolean(process.env.RAZORPAY_KEY_ID),
-      hasKeySecret: Boolean(process.env.RAZORPAY_KEY_SECRET),
+      hasKeyId: Boolean(razorpayKeyId),
+      hasKeySecret: Boolean(razorpayKeySecret),
     });
     const error = new Error('Razorpay keys not configured');
     error.statusCode = 500;
@@ -40,8 +45,8 @@ const getRazorpayInstance = () => {
   }
 
   return new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
+    key_id: razorpayKeyId,
+    key_secret: razorpayKeySecret,
   });
 };
 
@@ -56,7 +61,9 @@ const verifyRazorpaySignature = ({
     throw error;
   }
 
-  if (!process.env.RAZORPAY_KEY_SECRET) {
+  const razorpayKeySecret = getTrimmedEnvValue('RAZORPAY_KEY_SECRET');
+
+  if (!razorpayKeySecret) {
     const error = new Error('Razorpay secret is not configured');
     error.statusCode = 500;
     throw error;
@@ -64,7 +71,7 @@ const verifyRazorpaySignature = ({
 
   const body = `${razorpay_order_id}|${razorpay_payment_id}`;
   const expectedSignature = crypto
-    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .createHmac('sha256', razorpayKeySecret)
     .update(body)
     .digest('hex');
 
@@ -244,7 +251,7 @@ export const createPaymentOrder = async (req, res) => {
       finalAmount,
       currency: order.currency,
       amount: order.amount,
-      key_id: process.env.RAZORPAY_KEY_ID,
+      key_id: getTrimmedEnvValue('RAZORPAY_KEY_ID'),
     });
   } catch (error) {
     console.error('Razorpay create-order error:', error.message, {

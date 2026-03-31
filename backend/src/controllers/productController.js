@@ -27,23 +27,20 @@ const normalizeImageValue = (filePath = '') => {
 
 const uploadIncomingFiles = async (req) => {
   if (req.files?.length) {
-    if (hasCloudinaryConfig()) {
-      const uploadedImages = await Promise.all(
-        req.files.map((file) => uploadBufferToCloudinary(file))
+    if (!hasCloudinaryConfig()) {
+      console.error('Product upload blocked: Cloudinary is not configured for permanent image storage');
+      const error = new Error(
+        'Cloudinary is not configured. Please add Cloudinary credentials for permanent product image storage.'
       );
-
-      return uploadedImages.filter(Boolean);
+      error.statusCode = 500;
+      throw error;
     }
 
-    return req.files
-      .map((file) =>
-        normalizeImageValue(
-          file.filename
-            ? `/uploads/${file.filename}`
-            : file.path || file.originalname
-        )
-      )
-      .filter(Boolean);
+    const uploadedImages = await Promise.all(
+      req.files.map((file) => uploadBufferToCloudinary(file))
+    );
+
+    return uploadedImages.filter(Boolean);
   }
 
   return [];

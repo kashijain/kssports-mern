@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
+import FloatingSocial from './components/common/FloatingSocial';
 
 import Home from './pages/Home';
 import Shop from './pages/Shop';
@@ -79,6 +80,7 @@ const App = () => {
         </main>
 
         <Footer />
+        <FloatingSocial />
 
         <Toaster 
           position="bottom-right" 
