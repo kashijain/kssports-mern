@@ -234,7 +234,7 @@ export const createPaymentOrder = async (req, res) => {
       });
     }
 
-    const { baseAmount, convenienceCharge, tax, finalAmount } =
+    const { baseAmount: normalizedBaseAmount, convenienceCharge, tax, finalAmount } =
       calculateOrderAmounts(parsedAmount);
 
     const amountInPaise = Math.round(finalAmount * 100);
@@ -251,7 +251,7 @@ export const createPaymentOrder = async (req, res) => {
       message: 'Razorpay order created successfully',
       order,
       order_id: order.id,
-      baseAmount,
+      baseAmount: normalizedBaseAmount,
       convenienceCharge,
       tax,
       finalAmount,
