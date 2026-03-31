@@ -3,6 +3,120 @@ import { hasCloudinaryConfig } from '../config/cloudinary.js';
 import { uploadBufferToCloudinary } from '../utils/uploadToCloudinary.js';
 
 const DEFAULT_PRODUCT_IMAGE = '/uploads/product-placeholder.png';
+const CATEGORY_DETAIL_TEMPLATES = {
+  Bat: {
+    description: (name) =>
+      `${name} is designed for dependable stroke play with a balanced pickup, responsive blade feel, and comfortable grip for regular match and practice sessions.`,
+    features: [
+      'Balanced pickup for controlled shots',
+      'Comfortable grip for longer sessions',
+      'Durable blade profile for regular use',
+      'Suitable for net practice and match play',
+    ],
+    specifications: [
+      { name: 'Weight', value: 'Light to Medium' },
+      { name: 'Willow Type', value: 'Premium Sports Willow' },
+      { name: 'Grip Type', value: 'Comfort Grip' },
+      { name: 'Bat Size', value: 'Standard' },
+    ],
+  },
+  Ball: {
+    description: (name) =>
+      `${name} is built for reliable performance, consistent bounce, and durable day-to-day use across training sessions, casual play, and competitive matches.`,
+    features: [
+      'Consistent bounce and feel',
+      'Durable construction for repeated use',
+      'Suitable for training and match play',
+      'Easy handling and control',
+    ],
+    specifications: [
+      { name: 'Weight', value: 'Standard Match Weight' },
+      { name: 'Material', value: 'Durable Composite' },
+      { name: 'Type', value: 'Practice / Match Use' },
+      { name: 'Color', value: 'Standard' },
+    ],
+  },
+  Gloves: {
+    description: (name) =>
+      `${name} offers a secure fit, comfortable feel, and dependable protection for players who need grip, flexibility, and all-session comfort.`,
+    features: [
+      'Secure fit with flexible feel',
+      'Comfortable inner lining',
+      'Reliable grip support',
+      'Suitable for extended playing sessions',
+    ],
+    specifications: [
+      { name: 'Size', value: 'Standard' },
+      { name: 'Material', value: 'Synthetic Blend' },
+      { name: 'Hand Type', value: 'Multi-fit' },
+      { name: 'Padding Type', value: 'Comfort Padding' },
+    ],
+  },
+  Accessories: {
+    description: (name) =>
+      `${name} is a practical sports accessory designed for everyday convenience, reliable durability, and easy use during training or match preparation.`,
+    features: [
+      'Useful for daily sports routines',
+      'Durable build for repeated use',
+      'Lightweight and easy to carry',
+      'Suitable for training and match support',
+    ],
+    specifications: [
+      { name: 'Size', value: 'Standard' },
+      { name: 'Material', value: 'Durable Utility Material' },
+      { name: 'Color', value: 'Standard Assorted' },
+      { name: 'Quantity', value: '1 Unit' },
+    ],
+  },
+  Sleeves: {
+    description: (name) =>
+      `${name} is designed for comfort, stretch, and reliable coverage, making it a useful addition for training, outdoor play, and regular sports use.`,
+    features: [
+      'Stretchable and comfortable fit',
+      'Breathable feel for active use',
+      'Lightweight for daily wear',
+      'Suitable for training and outdoor sessions',
+    ],
+    specifications: [
+      { name: 'Size', value: 'Free / Standard' },
+      { name: 'Fabric', value: 'Stretch Performance Fabric' },
+      { name: 'Color', value: 'Standard' },
+      { name: 'Stretch Type', value: 'Flexible Fit' },
+    ],
+  },
+  Shaker: {
+    description: (name) =>
+      `${name} is built for convenience and durability, making it easy to mix drinks quickly and carry as part of a daily fitness or training routine.`,
+    features: [
+      'Easy to carry and use',
+      'Leak-resistant practical design',
+      'Durable body for regular use',
+      'Ideal for gym and sports routines',
+    ],
+    specifications: [
+      { name: 'Capacity', value: 'Standard' },
+      { name: 'Material', value: 'Food-grade Plastic' },
+      { name: 'Color', value: 'Standard' },
+      { name: 'Lid Type', value: 'Secure Flip / Screw Lid' },
+    ],
+  },
+  Other: {
+    description: (name) =>
+      `${name} is a dependable sports product designed for practical daily use, solid durability, and easy integration into training or match-day routines.`,
+    features: [
+      'Practical for daily use',
+      'Durable construction',
+      'Easy to handle and maintain',
+      'Suitable for regular sports use',
+    ],
+    specifications: [
+      { name: 'Material', value: 'Standard Durable Material' },
+      { name: 'Color', value: 'Standard' },
+      { name: 'Size', value: 'Standard' },
+      { name: 'Usage', value: 'Training / Regular Use' },
+    ],
+  },
+};
 
 const normalizeImageValue = (filePath = '') => {
   const normalizedPath = String(filePath).replace(/\\/g, '/').trim();
@@ -131,6 +245,31 @@ const getIncomingFeatures = (req) => {
   }
 
   return [];
+};
+
+const normalizeGeneratedText = (value = '') =>
+  String(value || '').trim().replace(/\s+/g, ' ');
+
+const getCategoryTemplate = (category = '') =>
+  CATEGORY_DETAIL_TEMPLATES[normalizeGeneratedText(category)] ||
+  CATEGORY_DETAIL_TEMPLATES.Other;
+
+export const generateProductDetails = async (req, res) => {
+  const name = normalizeGeneratedText(req.body.name);
+  const category = normalizeGeneratedText(req.body.category);
+
+  if (!name || !category) {
+    res.status(400);
+    throw new Error('Product name and category are required');
+  }
+
+  const template = getCategoryTemplate(category);
+
+  res.json({
+    description: template.description(name),
+    features: template.features,
+    specifications: template.specifications,
+  });
 };
 
 export const getProducts = async (req, res) => {
