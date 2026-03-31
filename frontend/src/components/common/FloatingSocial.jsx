@@ -3,14 +3,14 @@ import { Instagram, MessageCircle } from 'lucide-react';
 const socialLinks = [
   {
     name: 'WhatsApp',
-    href: 'https://wa.me/911234567890',
+    href: 'https://wa.me/917082252531',
     icon: MessageCircle,
     className:
       'bg-[#25D366] text-white shadow-lg shadow-green-500/30 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-500/40',
   },
   {
     name: 'Instagram',
-    href: 'https://instagram.com/yourusername',
+    href: 'https://instagram.com/kssportsknl',
     icon: Instagram,
     className:
       'bg-gradient-to-br from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white shadow-lg shadow-pink-500/25 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-pink-500/35',

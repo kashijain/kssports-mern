@@ -219,10 +219,14 @@ export const getOrderById = async (req, res) => {
 export const createPaymentOrder = async (req, res) => {
   try {
     console.log('Create Razorpay order request body:', req.body);
+    console.log('Razorpay keys available:', {
+      hasKeyId: Boolean(getTrimmedEnvValue('RAZORPAY_KEY_ID')),
+      hasKeySecret: Boolean(getTrimmedEnvValue('RAZORPAY_KEY_SECRET')),
+    });
 
     const parsedAmount = Number(req.body.baseAmount);
 
-    if (!parsedAmount || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({
         success: false,
         message: 'A valid base amount is required',
@@ -244,6 +248,7 @@ export const createPaymentOrder = async (req, res) => {
     return res.json({
       success: true,
       message: 'Razorpay order created successfully',
+      order,
       order_id: order.id,
       baseAmount,
       convenienceCharge,
@@ -254,19 +259,24 @@ export const createPaymentOrder = async (req, res) => {
       key_id: getTrimmedEnvValue('RAZORPAY_KEY_ID'),
     });
   } catch (error) {
-    console.error('Razorpay create-order error:', error.message, {
+    const razorpayErrorMessage =
+      error?.error?.description ||
+      error?.description ||
+      error?.message ||
+      'Failed to create Razorpay order';
+
+    console.error('Razorpay create-order error:', razorpayErrorMessage, {
       stack: error.stack,
       body: req.body,
+      statusCode: error?.statusCode,
+      error: error?.error,
     });
 
     const statusCode = error.statusCode || 500;
 
     return res.status(statusCode).json({
       success: false,
-      message:
-        statusCode === 500
-          ? 'Failed to create Razorpay order'
-          : error.message,
+      message: razorpayErrorMessage,
     });
   }
 };
