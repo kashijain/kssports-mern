@@ -69,7 +69,7 @@ const offlineSaleSchema = new mongoose.Schema(
     },
     paymentMode: {
       type: String,
-      enum: ['', 'Cash', 'Online', 'Pending', 'Online/UPI'],
+      enum: ['', 'Cash', 'Online', 'Pending'],
       required: false,
       default: '',
     },

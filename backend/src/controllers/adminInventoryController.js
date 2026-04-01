@@ -129,7 +129,7 @@ const normalizePaymentMode = (value, { strict = false } = {}) => {
     return 'Cash';
   }
 
-  if (!strict && normalizedValue === 'pending') {
+  if (normalizedValue === 'pending') {
     return 'Pending';
   }
 
@@ -150,7 +150,7 @@ const derivePaymentDetails = ({ totalSale, paymentMode, pendingAmount, customerN
 
   if (paymentMode === 'Pending') {
     if (!Number.isFinite(normalizedPendingAmount) || normalizedPendingAmount <= 0) {
-      throw new Error('Pending Amount is required when payment is pending');
+      throw new Error('Pending amount must be greater than 0');
     }
 
     if (normalizedPendingAmount > totalSale) {
@@ -158,7 +158,7 @@ const derivePaymentDetails = ({ totalSale, paymentMode, pendingAmount, customerN
     }
 
     if (!normalizedCustomerName) {
-      throw new Error('Customer Name is required when payment is pending');
+      throw new Error('Customer name is required when payment is Pending');
     }
 
     return {
