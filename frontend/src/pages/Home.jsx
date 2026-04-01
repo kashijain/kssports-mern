@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/product/ProductCard';
-import { ArrowRight, Trophy, Zap, ShieldCheck, TrendingUp, Star, Quote, Mail } from 'lucide-react';
+import { ArrowRight, Trophy, Zap, ShieldCheck, TrendingUp, Star, Mail, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useProductStore } from '../store/useStore';
 
@@ -10,6 +10,24 @@ const categories = [
   { name: 'Balls', image: 'https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80', desc: 'Match Ready Turf Balls' },
   { name: 'Footwear', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80', desc: 'Ultra Grip Performance' },
   { name: 'Kits', image: 'https://images.unsplash.com/photo-1518605368461-1e94441586a1?auto=format&fit=crop&q=80', desc: 'Complete Pro Sets' },
+];
+
+const ambitionCategories = [
+  {
+    name: 'Cricket Bats',
+    image: 'https://images.unsplash.com/photo-1593341646782-e0b495cff86d?auto=format&fit=crop&q=80',
+    href: '/shop?category=Bats',
+  },
+  {
+    name: 'Protective Gear',
+    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80',
+    href: '/shop?category=Kits',
+  },
+  {
+    name: 'Footwear',
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80',
+    href: '/shop?category=Footwear',
+  },
 ];
 
 const features = [
@@ -54,62 +72,65 @@ const Home = () => {
           <img
             src="https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80"
             alt="Stadium background"
-            className="h-full w-full object-cover opacity-20"
+            className="h-full w-full object-cover opacity-30"
           />
         </div>
-        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.22),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(37,99,235,0.14),transparent_24%)]"></div>
-        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-950 via-slate-950/92 to-slate-900/90"></div>
-        <div className="absolute left-[8%] top-[12%] z-0 h-40 w-40 rounded-full border border-white/10 bg-white/5 blur-3xl"></div>
-        <div className="absolute bottom-[10%] right-[8%] z-0 h-64 w-64 rounded-full bg-primary-600/12 blur-[120px]"></div>
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.32),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_24%),linear-gradient(180deg,rgba(2,6,23,0.2),rgba(2,6,23,0.72))]"></div>
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-950 via-slate-950/94 to-slate-900/90"></div>
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-slate-950 via-slate-950/88 to-slate-950/18"></div>
+        <div className="absolute left-[7%] top-[10%] z-0 h-40 w-40 rounded-full border border-white/10 bg-white/5 blur-3xl"></div>
+        <div className="absolute bottom-[8%] right-[7%] z-0 h-72 w-72 rounded-full bg-primary-600/18 blur-[130px]"></div>
 
-        <div className="container-bound relative z-10 grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+        <div className="container-bound relative z-10 grid items-center gap-14 py-16 lg:grid-cols-[1fr_1.02fr] lg:py-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="text-center lg:text-left"
+            className="max-w-2xl text-center lg:text-left"
           >
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-xl">
               <TrendingUp size={16} className="text-primary-500" />
               <span>Premium Athletic Goods</span>
             </div>
 
-            <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight text-white md:text-7xl xl:text-[5.6rem]">
-              Built For
-              <span className="block text-transparent bg-gradient-to-r from-white via-primary-100 to-primary-500 bg-clip-text">
-                Serious Players
+            <h1 className="max-w-3xl text-5xl font-black leading-[0.9] tracking-tight text-white md:text-7xl xl:text-[5.7rem]">
+              BUILT FOR
+              <span className="mt-1 block">
+                <span className="text-primary-500">SERIOUS</span> PLAYERS
               </span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 lg:mx-0 lg:text-xl">
-              Discover premium cricket and training gear curated for athletes who want sharper balance, stronger performance, and a brand they can trust match after match.
+            <p className="mx-auto mt-8 max-w-xl text-lg leading-8 text-slate-300 lg:mx-0 lg:text-xl">
+              Premium cricket and performance essentials engineered for sharper training, stronger match days, and athletes who play to win.
             </p>
 
             <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
-              <Link to="/shop" className="btn-primary px-8 py-4 text-lg">
+              <Link to="/shop" className="btn-primary group px-8 py-4 text-lg shadow-[0_26px_54px_-22px_rgba(220,38,38,0.72)]">
                 Shop Now
                 <ArrowRight className="transition-transform group-hover:translate-x-1" />
               </Link>
               <a
                 href="#categories"
-                className="btn-secondary border-white/10 bg-white/5 px-8 py-4 text-lg text-white backdrop-blur-md hover:bg-white/10 hover:text-white"
+                className="btn-secondary border-white/15 bg-white/[0.04] px-8 py-4 text-lg text-white shadow-[0_20px_45px_-28px_rgba(15,23,42,0.9)] backdrop-blur-md hover:bg-white/10 hover:text-white"
               >
                 Explore Collection
               </a>
             </div>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:max-w-2xl">
               {[
-                ['10K+', 'Players served'],
-                ['48 Hr', 'Fast dispatch'],
-                ['Pro Grade', 'Performance gear'],
-              ].map(([value, label]) => (
+                ['Premium Quality', Trophy],
+                ['Fast Delivery', Zap],
+                ['Trusted by Players', ShieldCheck],
+              ].map(([label, Icon]) => (
                 <div
                   key={label}
-                  className="rounded-2xl border border-white/10 bg-white/6 px-5 py-4 text-left backdrop-blur-xl"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-left backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/10"
                 >
-                  <p className="text-2xl font-black text-white">{value}</p>
-                  <p className="mt-1 text-sm text-slate-400">{label}</p>
+                  <div className="rounded-xl bg-primary-500/12 p-2 text-primary-300">
+                    <Icon size={16} />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-200">{label}</p>
                 </div>
               ))}
             </div>
@@ -121,68 +142,82 @@ const Home = () => {
             transition={{ duration: 0.9, delay: 0.15, ease: 'easeOut' }}
             className="relative mx-auto w-full max-w-2xl"
           >
-            <div className="absolute -left-6 top-16 hidden h-36 w-36 rounded-[2rem] border border-white/10 bg-white/6 backdrop-blur-xl lg:block"></div>
-            <div className="absolute -right-8 bottom-10 hidden h-44 w-44 rounded-full bg-primary-600/15 blur-3xl lg:block"></div>
+            <div className="absolute -left-6 top-14 hidden h-36 w-36 rounded-[2rem] border border-white/10 bg-white/8 backdrop-blur-xl lg:block"></div>
+            <div className="absolute -right-8 bottom-8 hidden h-44 w-44 rounded-full bg-primary-600/15 blur-3xl lg:block"></div>
 
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.07] p-4 shadow-[0_34px_95px_-40px_rgba(0,0,0,0.95)] backdrop-blur-xl">
               <div className="relative overflow-hidden rounded-[1.7rem]">
                 <img
                   src="https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80"
                   alt="Premium sports gear"
-                  className="h-[520px] w-full object-cover object-center"
+                  className="h-[560px] w-full object-cover object-center transition-transform duration-700 hover:scale-[1.02]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/20 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/25 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/18 via-transparent to-transparent"></div>
 
-                <div className="absolute left-5 top-5 rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 backdrop-blur-md">
+                <div className="absolute left-5 top-5 rounded-2xl border border-white/15 bg-slate-950/62 px-4 py-3 shadow-[0_18px_35px_-20px_rgba(0,0,0,0.8)] backdrop-blur-md">
                   <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Featured Drop</p>
                   <p className="mt-1 text-lg font-bold text-white">Elite Match Collection</p>
                 </div>
 
-                <div className="absolute bottom-5 left-5 right-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-                  <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/62 p-5 backdrop-blur-xl">
+                <div className="absolute inset-x-5 bottom-5 grid gap-4">
+                  <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/68 p-6 shadow-[0_24px_48px_-28px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_30px_60px_-30px_rgba(220,38,38,0.35)]">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary-300">Signature Pick</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary-300">Featured Product</p>
                         <h3 className="mt-2 text-2xl font-black text-white">English Willow Power Bat</h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-300">
-                          Crafted for balance, clean stroke play, and match-day confidence.
+                        <p className="mt-3 max-w-md text-sm leading-6 text-slate-300">
+                          Hand-selected for elite pickup, explosive middle, and confident stroke play under pressure.
                         </p>
                       </div>
-                      <div className="rounded-2xl bg-white/10 p-3 text-primary-300">
-                        <Trophy size={22} />
+                      <div className="rounded-2xl bg-white/10 px-4 py-3 text-right shadow-inner shadow-white/5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Starting At</p>
+                        <p className="mt-1 text-2xl font-black text-white">₹12,999</p>
                       </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-                      <div className="flex gap-1 text-yellow-400">
-                        <Star size={15} className="fill-yellow-400" />
-                        <Star size={15} className="fill-yellow-400" />
-                        <Star size={15} className="fill-yellow-400" />
-                        <Star size={15} className="fill-yellow-400" />
-                        <Star size={15} className="fill-yellow-400" />
+
+                    <div className="mt-5 grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                      <div className="flex items-center gap-3">
+                        {[
+                          'https://images.unsplash.com/photo-1593341646782-e0b495cff86d?auto=format&fit=crop&q=80',
+                          'https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80',
+                          'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80',
+                        ].map((preview, index) => (
+                          <div key={preview} className={`h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/10 ${index === 1 ? 'ring-2 ring-primary-500/70' : ''}`}>
+                            <img src={preview} alt="Preview product" className="h-full w-full object-cover" />
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-sm font-semibold text-white">Trusted by academies</p>
+                      <div className="flex items-center gap-3 sm:justify-end">
+                        <div className="flex gap-1 text-yellow-400">
+                          <Star size={15} className="fill-yellow-400" />
+                          <Star size={15} className="fill-yellow-400" />
+                          <Star size={15} className="fill-yellow-400" />
+                          <Star size={15} className="fill-yellow-400" />
+                          <Star size={15} className="fill-yellow-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-white">Trusted by academies</p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/8 p-5 backdrop-blur-xl">
-                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Why K.S. Sports</p>
-                    <div className="mt-4 space-y-4">
-                      {[
-                        ['Premium Finish', 'Sharp product quality'],
-                        ['Reliable Delivery', 'Fast all-India shipping'],
-                        ['Store Trusted', 'Trusted by 10K+ athletes'],
-                      ].map(([title, desc]) => (
-                        <div key={title} className="flex items-start gap-3">
-                          <div className="mt-1 rounded-full bg-primary-500/15 p-2 text-primary-300">
-                            <ShieldCheck size={14} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-white">{title}</p>
-                            <p className="text-xs leading-5 text-slate-400">{desc}</p>
-                          </div>
-                        </div>
-                      ))}
+                  <div className="absolute -left-5 bottom-24 hidden w-48 rounded-[1.45rem] border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_40px_-22px_rgba(0,0,0,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 lg:block">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Quick Ship</p>
+                    <p className="mt-2 text-xl font-black text-white">24hr Dispatch</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">Fast movement on premium gear across major cities.</p>
+                  </div>
+
+                  <div className="absolute -right-4 top-24 hidden w-44 rounded-[1.45rem] border border-white/10 bg-slate-950/72 p-4 shadow-[0_18px_40px_-22px_rgba(0,0,0,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 lg:block">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-300">Store Rating</p>
+                    <div className="mt-3 flex items-center gap-2 text-yellow-400">
+                      <Star size={14} className="fill-yellow-400" />
+                      <Star size={14} className="fill-yellow-400" />
+                      <Star size={14} className="fill-yellow-400" />
+                      <Star size={14} className="fill-yellow-400" />
+                      <Star size={14} className="fill-yellow-400" />
                     </div>
+                    <p className="mt-3 text-2xl font-black text-white">4.9/5</p>
+                    <p className="mt-1 text-xs text-slate-400">Trusted by serious players</p>
                   </div>
                 </div>
               </div>
@@ -191,10 +226,65 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Equip Your Ambition */}
+      <section id="categories" className="relative overflow-hidden border-y border-white/10 bg-slate-950 py-20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0),rgba(15,23,42,0.66))]"></div>
+        <div className="container-bound">
+          <div className="relative z-10 mb-12 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <span className="section-kicker border-white/10 bg-white/[0.04] text-primary-300">Equip Your Ambition</span>
+              <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-white md:text-5xl">
+                Premium essentials for every serious phase of the game.
+              </h2>
+            </div>
+            <Link to="/shop" className="btn-secondary group w-fit border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]">
+              Explore All
+              <ChevronRight size={18} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+
+          <div className="relative z-10 grid gap-6 md:grid-cols-3">
+            {ambitionCategories.map((category, idx) => (
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1, duration: 0.55 }}
+                key={category.name}
+              >
+                <Link
+                  to={category.href}
+                  className="group relative block overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-[0_24px_60px_-34px_rgba(0,0,0,0.9)] transition-all duration-500 hover:-translate-y-2 hover:border-white/20 hover:shadow-[0_32px_72px_-34px_rgba(220,38,38,0.28)]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent z-10"></div>
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="h-[320px] w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 z-20 p-7">
+                    <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary-300">Featured Category</p>
+                    <div className="mt-3 flex items-end justify-between gap-4">
+                      <div>
+                        <h3 className="text-2xl font-black text-white">{category.name}</h3>
+                        <p className="mt-2 text-sm text-slate-300">Elevated performance gear with a premium finish.</p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-3 text-white backdrop-blur-md">
+                        <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features Banner */}
       <section className="relative z-10 border-y border-white/40 bg-white/70 py-12 backdrop-blur-xl dark:border-white/5 dark:bg-dark-card/60">
         <div className="container-bound">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             {features.map((feat, idx) => (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
