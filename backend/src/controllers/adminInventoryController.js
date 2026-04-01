@@ -5,7 +5,7 @@ import OfflineSale from '../models/OfflineSale.js';
 
 const DEFAULT_PRODUCT_IMAGE = '/uploads/product-placeholder.png';
 const DEFAULT_PRODUCT_BRAND = 'K.S. Sports';
-const OFFLINE_PAYMENT_MODES = ['Cash', 'Pending', 'Online/UPI'];
+const OFFLINE_PAYMENT_MODES = ['Cash', 'Online', 'Pending'];
 const PRODUCT_NAME_ALIASES = {
   'glubes regular': 'Gloves Regular',
   'glubes perium': 'Gloves Premium',
@@ -135,48 +135,44 @@ const normalizePaymentMode = (value, { strict = false } = {}) => {
 
   if (
     normalizedValue === 'online' ||
-    normalizedValue === 'upi' ||
-    normalizedValue === 'online/upi'
+    (!strict && normalizedValue === 'upi') ||
+    (!strict && normalizedValue === 'online/upi')
   ) {
-    if (!strict && normalizedValue === 'online/upi') {
-      return 'Online/UPI';
-    }
-
-    return normalizedValue === 'online' ? 'Online' : 'UPI';
+    return strict ? 'Online' : normalizedValue === 'online' ? 'Online' : 'Online/UPI';
   }
 
   return null;
 };
 
-const derivePaymentDetails = ({ totalSale, receivedAmount, customerName }) => {
-  const normalizedReceivedAmount = Number(receivedAmount);
-
-  if (!Number.isFinite(normalizedReceivedAmount) || normalizedReceivedAmount < 0) {
-    throw new Error('Received Amount must be 0 or more');
-  }
-
-  if (normalizedReceivedAmount > totalSale) {
-    throw new Error('Received Amount cannot be greater than Total Sale');
-  }
-
-  const pendingAmount = totalSale - normalizedReceivedAmount;
+const derivePaymentDetails = ({ totalSale, paymentMode, pendingAmount, customerName }) => {
   const normalizedCustomerName = toTrimmedString(customerName);
-  let paymentStatus = 'Pending';
+  const normalizedPendingAmount = Number(pendingAmount ?? 0);
 
-  if (normalizedReceivedAmount === totalSale) {
-    paymentStatus = 'Full Payment';
-  } else if (normalizedReceivedAmount > 0) {
-    paymentStatus = 'Partial Payment';
-  }
+  if (paymentMode === 'Pending') {
+    if (!Number.isFinite(normalizedPendingAmount) || normalizedPendingAmount <= 0) {
+      throw new Error('Pending Amount is required when payment is pending');
+    }
 
-  if (pendingAmount > 0 && !normalizedCustomerName) {
-    throw new Error('Customer Name is required when payment is pending');
+    if (normalizedPendingAmount > totalSale) {
+      throw new Error('Pending Amount cannot be greater than Total Sale');
+    }
+
+    if (!normalizedCustomerName) {
+      throw new Error('Customer Name is required when payment is pending');
+    }
+
+    return {
+      receivedAmount: totalSale - normalizedPendingAmount,
+      pendingAmount: normalizedPendingAmount,
+      paymentStatus: 'Pending',
+      customerName: normalizedCustomerName,
+    };
   }
 
   return {
-    receivedAmount: normalizedReceivedAmount,
-    pendingAmount,
-    paymentStatus,
+    receivedAmount: totalSale,
+    pendingAmount: 0,
+    paymentStatus: 'Full Payment',
     customerName: normalizedCustomerName,
   };
 };
@@ -360,7 +356,7 @@ const normalizeOfflineSalePayload = async ({
   quantitySold,
   salePricePerItem,
   costPricePerItem,
-  receivedAmount,
+  pendingAmount,
   customerName,
   paymentMode,
   notes,
@@ -389,7 +385,7 @@ const normalizeOfflineSalePayload = async ({
   if (!normalizedPaymentMode) {
     throw new Error(
       strictPaymentMode
-        ? `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, UPI, or Online`
+        ? `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, Online, or Pending`
         : `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, Pending, or Online/UPI`
     );
   }
@@ -429,7 +425,8 @@ const normalizeOfflineSalePayload = async ({
   const totalCost = normalizedQuantity * resolvedCostPrice;
   const paymentDetails = derivePaymentDetails({
     totalSale,
-    receivedAmount: receivedAmount ?? totalSale,
+    paymentMode: normalizedPaymentMode,
+    pendingAmount,
     customerName,
   });
 

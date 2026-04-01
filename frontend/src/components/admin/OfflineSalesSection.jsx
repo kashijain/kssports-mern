@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/price';
 
-const paymentModes = ['Cash', 'Online', 'UPI'];
+const paymentModes = ['Cash', 'Online', 'Pending'];
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -20,7 +20,7 @@ const createEmptyForm = () => ({
   quantitySold: '1',
   salePricePerItem: '',
   costPricePerItem: '',
-  receivedAmount: '',
+  pendingAmount: '',
   customerName: '',
   paymentMode: 'Cash',
   notes: '',
@@ -55,29 +55,14 @@ const OfflineSalesSection = () => {
     [form.quantitySold, form.costPricePerItem]
   );
   const profit = useMemo(() => totalSale - totalCost, [totalSale, totalCost]);
-  const receivedAmount = useMemo(() => {
-    if (form.receivedAmount === '') {
-      return totalSale;
+  const pendingAmount = useMemo(() => {
+    if (form.paymentMode !== 'Pending') {
+      return 0;
     }
 
-    const value = Number(form.receivedAmount);
-    return Number.isFinite(value) ? value : 0;
-  }, [form.receivedAmount, totalSale]);
-  const pendingAmount = useMemo(
-    () => Math.max(totalSale - receivedAmount, 0),
-    [receivedAmount, totalSale]
-  );
-  const paymentStatus = useMemo(() => {
-    if (receivedAmount === totalSale) {
-      return 'Full Payment';
-    }
-
-    if (receivedAmount > 0 && receivedAmount < totalSale) {
-      return 'Partial Payment';
-    }
-
-    return 'Pending';
-  }, [receivedAmount, totalSale]);
+    const value = Number(form.pendingAmount);
+    return Number.isFinite(value) && value >= 0 ? value : 0;
+  }, [form.paymentMode, form.pendingAmount]);
 
   const resetForm = () => {
     setEditingSaleId('');
@@ -146,14 +131,19 @@ const OfflineSalesSection = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const normalizedReceivedAmount = form.receivedAmount === '' ? totalSale : Number(form.receivedAmount);
+    const normalizedPendingAmount = form.paymentMode === 'Pending' ? Number(form.pendingAmount) : 0;
 
-    if (normalizedReceivedAmount > totalSale) {
-      toast.error('Received amount cannot be greater than total sale');
+    if (form.paymentMode === 'Pending' && (!Number.isFinite(normalizedPendingAmount) || normalizedPendingAmount <= 0)) {
+      toast.error('Pending amount is required for pending payment');
       return;
     }
 
-    if (pendingAmount > 0 && !form.customerName.trim()) {
+    if (normalizedPendingAmount > totalSale) {
+      toast.error('Pending amount cannot be greater than total sale');
+      return;
+    }
+
+    if (form.paymentMode === 'Pending' && !form.customerName.trim()) {
       toast.error('Customer name is required when payment is pending');
       return;
     }
@@ -166,7 +156,7 @@ const OfflineSalesSection = () => {
       quantitySold: Number(form.quantitySold),
       salePricePerItem: Number(form.salePricePerItem),
       costPricePerItem: Number(form.costPricePerItem),
-      receivedAmount: normalizedReceivedAmount,
+      pendingAmount: normalizedPendingAmount,
       customerName: form.customerName,
       paymentMode: form.paymentMode,
       notes: form.notes,
@@ -201,7 +191,7 @@ const OfflineSalesSection = () => {
       quantitySold: String(sale.quantitySold ?? 1),
       salePricePerItem: String(sale.salePricePerItem ?? ''),
       costPricePerItem: String(sale.costPricePerItem ?? ''),
-      receivedAmount: String(sale.receivedAmount ?? sale.totalSale ?? ''),
+      pendingAmount: String(sale.pendingAmount ?? ''),
       customerName: sale.customerName || '',
       paymentMode: sale.paymentMode || 'Cash',
       notes: sale.notes || '',
@@ -464,38 +454,30 @@ const OfflineSalesSection = () => {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Received Amount</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.receivedAmount}
-              onChange={(event) => setForm((current) => ({ ...current, receivedAmount: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
-              placeholder={totalSale ? String(totalSale) : '0'}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Pending Amount</label>
-            <input
-              type="text"
-              value={formatPrice(pendingAmount)}
-              readOnly
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Payment Status</label>
-            <input
-              type="text"
-              value={paymentStatus}
-              readOnly
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
-            />
-          </div>
+          {form.paymentMode === 'Pending' ? (
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Pending Amount</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={form.pendingAmount}
+                onChange={(event) => setForm((current) => ({ ...current, pendingAmount: event.target.value }))}
+                className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+                required
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Pending Amount</label>
+              <input
+                type="text"
+                value={formatPrice(0)}
+                readOnly
+                className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Customer Name</label>
@@ -504,7 +486,8 @@ const OfflineSalesSection = () => {
               value={form.customerName}
               onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
               className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
-              placeholder="Optional for full payment"
+              placeholder={form.paymentMode === 'Pending' ? 'Required for pending payment' : 'Optional'}
+              required={form.paymentMode === 'Pending'}
             />
           </div>
 
@@ -644,40 +627,55 @@ const OfflineSalesSection = () => {
             <thead>
               <tr className="bg-slate-50/80 dark:bg-dark-bg/80 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest">
                 <th className="px-6 py-5 border-b">Date</th>
-                <th className="px-6 py-5 border-b">Product Name</th>
+                <th className="px-6 py-5 border-b">Product</th>
                 <th className="px-6 py-5 border-b text-center">Qty</th>
-                <th className="px-6 py-5 border-b text-center">Sale Price</th>
                 <th className="px-6 py-5 border-b text-center">Total Sale</th>
-                <th className="px-6 py-5 border-b text-center">Cost Price</th>
-                <th className="px-6 py-5 border-b text-center">Total Cost</th>
-                <th className="px-6 py-5 border-b text-center">Profit</th>
-                <th className="px-6 py-5 border-b text-center">Payment Mode</th>
-                <th className="px-6 py-5 border-b">Notes</th>
+                <th className="px-6 py-5 border-b text-center">Total Profit</th>
+                <th className="px-6 py-5 border-b text-center">Payment</th>
+                <th className="px-6 py-5 border-b text-center">Pending Amount</th>
+                <th className="px-6 py-5 border-b">Customer Name</th>
                 <th className="px-6 py-5 border-b text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
               {!loadingSales && sales.length === 0 && (
                 <tr>
-                  <td colSpan="11" className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan="9" className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
                     No offline sales found for the selected filter.
                   </td>
                 </tr>
               )}
               {sales.map((sale) => (
-                <tr key={sale._id} className="hover:bg-slate-50/60 dark:hover:bg-dark-bg/50">
+                <tr
+                  key={sale._id}
+                  className={`hover:bg-slate-50/60 dark:hover:bg-dark-bg/50 ${
+                    sale.paymentMode === 'Pending'
+                      ? 'bg-amber-50/60 dark:bg-amber-900/10'
+                      : ''
+                  }`}
+                >
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                     {sale.saleDate?.slice(0, 10)}
                   </td>
                   <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{sale.productName}</td>
                   <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{sale.quantitySold}</td>
-                  <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{formatPrice(sale.salePricePerItem)}</td>
                   <td className="px-6 py-4 text-center font-semibold text-slate-900 dark:text-white">{formatPrice(sale.totalSale)}</td>
-                  <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{formatPrice(sale.costPricePerItem)}</td>
-                  <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{formatPrice(sale.totalCost)}</td>
                   <td className="px-6 py-4 text-center font-semibold text-emerald-700 dark:text-emerald-300">{formatPrice(sale.profit)}</td>
-                  <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{sale.paymentMode}</td>
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{sale.notes || '-'}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                        sale.paymentMode === 'Pending'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                      }`}
+                    >
+                      {sale.paymentMode}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center font-semibold text-amber-700 dark:text-amber-300">
+                    {sale.pendingAmount > 0 ? formatPrice(sale.pendingAmount) : formatPrice(0)}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{sale.customerName || '-'}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
