@@ -49,79 +49,144 @@ const Home = () => {
     <div className="min-h-screen bg-transparent">
       
       {/* Premium Hero Section */}
-      <section className="relative flex min-h-[92vh] items-center justify-center overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-0 right-0 w-full h-full bg-slate-950 z-0"></div>
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary-900/40 blur-[120px] mix-blend-screen z-0"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-primary-600/20 blur-[120px] mix-blend-screen z-0 animate-pulse"></div>
-        
-        {/* Hero Image Masked */}
-        <div className="absolute inset-0 z-0 opacity-40 mix-blend-overlay">
-          <img 
-            src="https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80" 
-            alt="Stadium Background" 
-            className="w-full h-full object-cover"
+      <section className="relative flex min-h-[94vh] items-center overflow-hidden bg-slate-950">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80"
+            alt="Stadium background"
+            className="h-full w-full object-cover opacity-20"
           />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-0"></div>
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.22),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(37,99,235,0.14),transparent_24%)]"></div>
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-950 via-slate-950/92 to-slate-900/90"></div>
+        <div className="absolute left-[8%] top-[12%] z-0 h-40 w-40 rounded-full border border-white/10 bg-white/5 blur-3xl"></div>
+        <div className="absolute bottom-[10%] right-[8%] z-0 h-64 w-64 rounded-full bg-primary-600/12 blur-[120px]"></div>
 
-        <div className="container-bound relative z-10 grid lg:grid-cols-2 gap-12 items-center py-12">
-          <motion.div 
+        <div className="container-bound relative z-10 grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
             className="text-center lg:text-left"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white mb-6 text-sm font-medium">
-              <TrendingUp size={16} className="text-primary-500" /> 
-              <span>New 2026 Collection Available</span>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-xl">
+              <TrendingUp size={16} className="text-primary-500" />
+              <span>Premium Athletic Goods</span>
             </div>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-sans font-extrabold text-white leading-[1.05] mb-6 tracking-tight">
-              Play Like <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-primary-600">A Champion</span>
+
+            <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight text-white md:text-7xl xl:text-[5.6rem]">
+              Built For
+              <span className="block text-transparent bg-gradient-to-r from-white via-primary-100 to-primary-500 bg-clip-text">
+                Serious Players
+              </span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-xl mx-auto lg:mx-0 font-light leading-relaxed">
-              Equip yourself with premium quality sports gear used by professionals. Designed for peak performance, built for victory.
+
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 lg:mx-0 lg:text-xl">
+              Discover premium cricket and training gear curated for athletes who want sharper balance, stronger performance, and a brand they can trust match after match.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-               <Link to="/shop" className="btn-primary px-8 py-4 text-lg">
-                  Shop Collection <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-               </Link>
-               <a href="#categories" className="btn-secondary border-white/10 bg-white/5 px-8 py-4 text-lg text-white backdrop-blur-md hover:bg-white/10 hover:text-white">
-                  Explore Categories
-               </a>
+
+            <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
+              <Link to="/shop" className="btn-primary px-8 py-4 text-lg">
+                Shop Now
+                <ArrowRight className="transition-transform group-hover:translate-x-1" />
+              </Link>
+              <a
+                href="#categories"
+                className="btn-secondary border-white/10 bg-white/5 px-8 py-4 text-lg text-white backdrop-blur-md hover:bg-white/10 hover:text-white"
+              >
+                Explore Collection
+              </a>
+            </div>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {[
+                ['10K+', 'Players served'],
+                ['48 Hr', 'Fast dispatch'],
+                ['Pro Grade', 'Performance gear'],
+              ].map(([value, label]) => (
+                <div
+                  key={label}
+                  className="rounded-2xl border border-white/10 bg-white/6 px-5 py-4 text-left backdrop-blur-xl"
+                >
+                  <p className="text-2xl font-black text-white">{value}</p>
+                  <p className="mt-1 text-sm text-slate-400">{label}</p>
+                </div>
+              ))}
             </div>
           </motion.div>
-          
-          {/* Decorative Hero Elements */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, rotate: -5 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 1, delay: 0.2, type: "spring" }}
-            className="hidden lg:block relative"
+
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.15, ease: 'easeOut' }}
+            className="relative mx-auto w-full max-w-2xl"
           >
-             <div className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl shadow-primary-900/50 border border-white/10 group">
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent z-10"></div>
-                <img src="https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80" alt="Premium Gear" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out"/>
-                
-                {/* Floating Badge */}
-                <motion.div 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 1, duration: 0.8 }}
-                  className="absolute bottom-8 left-8 right-8 bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-xl z-20"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-white text-sm font-medium mb-1">Professional Grade</p>
-                      <div className="flex gap-1 text-yellow-400"><Star size={16} className="fill-yellow-400"/> <Star size={16} className="fill-yellow-400"/> <Star size={16} className="fill-yellow-400"/> <Star size={16} className="fill-yellow-400"/> <Star size={16} className="fill-yellow-400"/></div>
+            <div className="absolute -left-6 top-16 hidden h-36 w-36 rounded-[2rem] border border-white/10 bg-white/6 backdrop-blur-xl lg:block"></div>
+            <div className="absolute -right-8 bottom-10 hidden h-44 w-44 rounded-full bg-primary-600/15 blur-3xl lg:block"></div>
+
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+              <div className="relative overflow-hidden rounded-[1.7rem]">
+                <img
+                  src="https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80"
+                  alt="Premium sports gear"
+                  className="h-[520px] w-full object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/20 to-transparent"></div>
+
+                <div className="absolute left-5 top-5 rounded-2xl border border-white/15 bg-slate-950/60 px-4 py-3 backdrop-blur-md">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Featured Drop</p>
+                  <p className="mt-1 text-lg font-bold text-white">Elite Match Collection</p>
+                </div>
+
+                <div className="absolute bottom-5 left-5 right-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/62 p-5 backdrop-blur-xl">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary-300">Signature Pick</p>
+                        <h3 className="mt-2 text-2xl font-black text-white">English Willow Power Bat</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-300">
+                          Crafted for balance, clean stroke play, and match-day confidence.
+                        </p>
+                      </div>
+                      <div className="rounded-2xl bg-white/10 p-3 text-primary-300">
+                        <Trophy size={22} />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-white font-bold text-2xl">10K+</p>
-                      <p className="text-slate-300 text-xs text-right">Athletes Trust Us</p>
+                    <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+                      <div className="flex gap-1 text-yellow-400">
+                        <Star size={15} className="fill-yellow-400" />
+                        <Star size={15} className="fill-yellow-400" />
+                        <Star size={15} className="fill-yellow-400" />
+                        <Star size={15} className="fill-yellow-400" />
+                        <Star size={15} className="fill-yellow-400" />
+                      </div>
+                      <p className="text-sm font-semibold text-white">Trusted by academies</p>
                     </div>
                   </div>
-                </motion.div>
-             </div>
+
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/8 p-5 backdrop-blur-xl">
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Why K.S. Sports</p>
+                    <div className="mt-4 space-y-4">
+                      {[
+                        ['Premium Finish', 'Sharp product quality'],
+                        ['Reliable Delivery', 'Fast all-India shipping'],
+                        ['Store Trusted', 'Trusted by 10K+ athletes'],
+                      ].map(([title, desc]) => (
+                        <div key={title} className="flex items-start gap-3">
+                          <div className="mt-1 rounded-full bg-primary-500/15 p-2 text-primary-300">
+                            <ShieldCheck size={14} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-white">{title}</p>
+                            <p className="text-xs leading-5 text-slate-400">{desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>
