@@ -20,6 +20,8 @@ const createEmptyForm = () => ({
   quantitySold: '1',
   salePricePerItem: '',
   costPricePerItem: '',
+  receivedAmount: '',
+  customerName: '',
   paymentMode: 'Cash',
   notes: '',
 });
@@ -53,6 +55,29 @@ const OfflineSalesSection = () => {
     [form.quantitySold, form.costPricePerItem]
   );
   const profit = useMemo(() => totalSale - totalCost, [totalSale, totalCost]);
+  const receivedAmount = useMemo(() => {
+    if (form.receivedAmount === '') {
+      return totalSale;
+    }
+
+    const value = Number(form.receivedAmount);
+    return Number.isFinite(value) ? value : 0;
+  }, [form.receivedAmount, totalSale]);
+  const pendingAmount = useMemo(
+    () => Math.max(totalSale - receivedAmount, 0),
+    [receivedAmount, totalSale]
+  );
+  const paymentStatus = useMemo(() => {
+    if (receivedAmount === totalSale) {
+      return 'Full Payment';
+    }
+
+    if (receivedAmount > 0 && receivedAmount < totalSale) {
+      return 'Partial Payment';
+    }
+
+    return 'Pending';
+  }, [receivedAmount, totalSale]);
 
   const resetForm = () => {
     setEditingSaleId('');
@@ -121,6 +146,18 @@ const OfflineSalesSection = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const normalizedReceivedAmount = form.receivedAmount === '' ? totalSale : Number(form.receivedAmount);
+
+    if (normalizedReceivedAmount > totalSale) {
+      toast.error('Received amount cannot be greater than total sale');
+      return;
+    }
+
+    if (pendingAmount > 0 && !form.customerName.trim()) {
+      toast.error('Customer name is required when payment is pending');
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = {
@@ -129,6 +166,8 @@ const OfflineSalesSection = () => {
       quantitySold: Number(form.quantitySold),
       salePricePerItem: Number(form.salePricePerItem),
       costPricePerItem: Number(form.costPricePerItem),
+      receivedAmount: normalizedReceivedAmount,
+      customerName: form.customerName,
       paymentMode: form.paymentMode,
       notes: form.notes,
     };
@@ -162,6 +201,8 @@ const OfflineSalesSection = () => {
       quantitySold: String(sale.quantitySold ?? 1),
       salePricePerItem: String(sale.salePricePerItem ?? ''),
       costPricePerItem: String(sale.costPricePerItem ?? ''),
+      receivedAmount: String(sale.receivedAmount ?? sale.totalSale ?? ''),
+      customerName: sale.customerName || '',
       paymentMode: sale.paymentMode || 'Cash',
       notes: sale.notes || '',
     });
@@ -421,6 +462,50 @@ const OfflineSalesSection = () => {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Received Amount</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.receivedAmount}
+              onChange={(event) => setForm((current) => ({ ...current, receivedAmount: event.target.value }))}
+              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              placeholder={totalSale ? String(totalSale) : '0'}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Pending Amount</label>
+            <input
+              type="text"
+              value={formatPrice(pendingAmount)}
+              readOnly
+              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Payment Status</label>
+            <input
+              type="text"
+              value={paymentStatus}
+              readOnly
+              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Customer Name</label>
+            <input
+              type="text"
+              value={form.customerName}
+              onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              placeholder="Optional for full payment"
+            />
           </div>
 
           <div className="space-y-2 md:col-span-2 xl:col-span-3">

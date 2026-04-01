@@ -119,7 +119,7 @@ const normalizeSaleDateInput = (value) => {
   return dateValue;
 };
 
-const normalizePaymentMode = (value) => {
+const normalizePaymentMode = (value, { strict = false } = {}) => {
   const normalizedValue = normalizeLookupName(value);
   if (!normalizedValue) {
     return null;
@@ -129,7 +129,7 @@ const normalizePaymentMode = (value) => {
     return 'Cash';
   }
 
-  if (normalizedValue === 'pending') {
+  if (!strict && normalizedValue === 'pending') {
     return 'Pending';
   }
 
@@ -138,10 +138,47 @@ const normalizePaymentMode = (value) => {
     normalizedValue === 'upi' ||
     normalizedValue === 'online/upi'
   ) {
-    return 'Online/UPI';
+    if (!strict && normalizedValue === 'online/upi') {
+      return 'Online/UPI';
+    }
+
+    return normalizedValue === 'online' ? 'Online' : 'UPI';
   }
 
   return null;
+};
+
+const derivePaymentDetails = ({ totalSale, receivedAmount, customerName }) => {
+  const normalizedReceivedAmount = Number(receivedAmount);
+
+  if (!Number.isFinite(normalizedReceivedAmount) || normalizedReceivedAmount < 0) {
+    throw new Error('Received Amount must be 0 or more');
+  }
+
+  if (normalizedReceivedAmount > totalSale) {
+    throw new Error('Received Amount cannot be greater than Total Sale');
+  }
+
+  const pendingAmount = totalSale - normalizedReceivedAmount;
+  const normalizedCustomerName = toTrimmedString(customerName);
+  let paymentStatus = 'Pending';
+
+  if (normalizedReceivedAmount === totalSale) {
+    paymentStatus = 'Full Payment';
+  } else if (normalizedReceivedAmount > 0) {
+    paymentStatus = 'Partial Payment';
+  }
+
+  if (pendingAmount > 0 && !normalizedCustomerName) {
+    throw new Error('Customer Name is required when payment is pending');
+  }
+
+  return {
+    receivedAmount: normalizedReceivedAmount,
+    pendingAmount,
+    paymentStatus,
+    customerName: normalizedCustomerName,
+  };
 };
 
 const getClosestProductNames = async (productName) => {
@@ -323,14 +360,19 @@ const normalizeOfflineSalePayload = async ({
   quantitySold,
   salePricePerItem,
   costPricePerItem,
+  receivedAmount,
+  customerName,
   paymentMode,
   notes,
   source = 'manual',
+  strictPaymentMode = false,
 }) => {
   const normalizedSaleDate = normalizeSaleDateInput(saleDate);
   const normalizedQuantity = Number(quantitySold);
   const normalizedSalePrice = Number(salePricePerItem);
-  const normalizedPaymentMode = normalizePaymentMode(paymentMode);
+  const normalizedPaymentMode = normalizePaymentMode(paymentMode, {
+    strict: strictPaymentMode,
+  });
 
   if (!normalizedSaleDate) {
     throw new Error('Valid sale date is required');
@@ -345,7 +387,11 @@ const normalizeOfflineSalePayload = async ({
   }
 
   if (!normalizedPaymentMode) {
-    throw new Error(`Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, Pending, or Online/UPI`);
+    throw new Error(
+      strictPaymentMode
+        ? `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, UPI, or Online`
+        : `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, Pending, or Online/UPI`
+    );
   }
 
   let product = null;
@@ -381,6 +427,11 @@ const normalizeOfflineSalePayload = async ({
   }
 
   const totalCost = normalizedQuantity * resolvedCostPrice;
+  const paymentDetails = derivePaymentDetails({
+    totalSale,
+    receivedAmount: receivedAmount ?? totalSale,
+    customerName,
+  });
 
   return {
     source,
@@ -396,6 +447,10 @@ const normalizeOfflineSalePayload = async ({
     totalCost,
     profit: totalSale - totalCost,
     paymentMode: normalizedPaymentMode,
+    paymentStatus: paymentDetails.paymentStatus,
+    receivedAmount: paymentDetails.receivedAmount,
+    pendingAmount: paymentDetails.pendingAmount,
+    customerName: paymentDetails.customerName,
     notes: toTrimmedString(notes),
   };
 };
@@ -416,6 +471,10 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
       totalCost: normalizedSale.totalCost ?? 0,
       profit: normalizedSale.profit ?? 0,
       paymentMode: normalizedSale.paymentMode || '',
+      paymentStatus: normalizedSale.paymentStatus || 'Full Payment',
+      receivedAmount: normalizedSale.receivedAmount ?? normalizedSale.totalSale ?? 0,
+      pendingAmount: normalizedSale.pendingAmount ?? 0,
+      customerName: normalizedSale.customerName || '',
       notes: normalizedSale.notes,
       createdBy: userId,
     });
@@ -438,6 +497,10 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
       totalCost: normalizedSale.totalCost,
       profit: normalizedSale.profit,
       paymentMode: normalizedSale.paymentMode,
+      paymentStatus: normalizedSale.paymentStatus || 'Full Payment',
+      receivedAmount: normalizedSale.receivedAmount ?? normalizedSale.totalSale ?? 0,
+      pendingAmount: normalizedSale.pendingAmount ?? 0,
+      customerName: normalizedSale.customerName || '',
       notes: normalizedSale.notes,
       createdBy: userId,
     });
@@ -476,6 +539,10 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
       totalCost: normalizedSale.totalCost,
       profit: normalizedSale.profit,
       paymentMode: normalizedSale.paymentMode,
+      paymentStatus: normalizedSale.paymentStatus,
+      receivedAmount: normalizedSale.receivedAmount,
+      pendingAmount: normalizedSale.pendingAmount,
+      customerName: normalizedSale.customerName,
       notes: normalizedSale.notes,
       createdBy: userId,
     });
@@ -508,6 +575,10 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
     existingSale.totalCost = normalizedSale.totalCost;
     existingSale.profit = normalizedSale.profit;
     existingSale.paymentMode = normalizedSale.paymentMode;
+    existingSale.paymentStatus = normalizedSale.paymentStatus || 'Full Payment';
+    existingSale.receivedAmount = normalizedSale.receivedAmount ?? normalizedSale.totalSale ?? 0;
+    existingSale.pendingAmount = normalizedSale.pendingAmount ?? 0;
+    existingSale.customerName = normalizedSale.customerName || '';
     existingSale.notes = normalizedSale.notes;
 
     const sale = await existingSale.save();
@@ -583,6 +654,10 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
   existingSale.totalCost = normalizedSale.totalCost;
   existingSale.profit = normalizedSale.profit;
   existingSale.paymentMode = normalizedSale.paymentMode;
+  existingSale.paymentStatus = normalizedSale.paymentStatus;
+  existingSale.receivedAmount = normalizedSale.receivedAmount;
+  existingSale.pendingAmount = normalizedSale.pendingAmount;
+  existingSale.customerName = normalizedSale.customerName;
   existingSale.notes = normalizedSale.notes;
 
   try {
@@ -893,6 +968,7 @@ export const createOfflineSale = async (req, res) => {
     const normalizedSale = await normalizeOfflineSalePayload({
       ...req.body,
       source: 'manual',
+      strictPaymentMode: true,
     });
     const result = await createOfflineSaleRecord(normalizedSale, req.user._id);
 
@@ -918,6 +994,7 @@ export const updateOfflineSale = async (req, res) => {
     const normalizedSale = await normalizeOfflineSalePayload({
       ...req.body,
       source: existingSale.source || 'manual',
+      strictPaymentMode: true,
     });
     const result = await updateOfflineSaleRecord(existingSale, normalizedSale);
 

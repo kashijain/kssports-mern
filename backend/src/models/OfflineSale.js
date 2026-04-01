@@ -69,8 +69,31 @@ const offlineSaleSchema = new mongoose.Schema(
     },
     paymentMode: {
       type: String,
-      enum: ['', 'Cash', 'Pending', 'Online/UPI'],
+      enum: ['', 'Cash', 'UPI', 'Online', 'Pending', 'Online/UPI'],
       required: false,
+      default: '',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['Full Payment', 'Partial Payment', 'Pending'],
+      required: false,
+      default: 'Full Payment',
+    },
+    receivedAmount: {
+      type: Number,
+      required: false,
+      min: 0,
+      default: 0,
+    },
+    pendingAmount: {
+      type: Number,
+      required: false,
+      min: 0,
+      default: 0,
+    },
+    customerName: {
+      type: String,
+      trim: true,
       default: '',
     },
     notes: {
