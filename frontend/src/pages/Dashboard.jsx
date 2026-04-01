@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { BarChart3, CheckCircle2, Clock, Edit, FileSpreadsheet, LayoutDashboard, Package, Plus, ReceiptIndianRupee, Search, ShoppingBag, Trash2, Users, XCircle } from 'lucide-react';
+import { BarChart3, CheckCircle2, Clock, Edit, FileSpreadsheet, LayoutDashboard, Package, Plus, ReceiptIndianRupee, Search, ShoppingBag, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useAuthStore, useOrderStore, useProductStore } from '../store/useStore';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
@@ -9,6 +9,9 @@ import { formatPrice } from '../utils/price';
 import UploadStockSheetSection from '../components/admin/UploadStockSheetSection';
 import OfflineSalesSection from '../components/admin/OfflineSalesSection';
 import SalesReportSection from '../components/admin/SalesReportSection';
+import BatRepairSection from '../components/admin/BatRepairSection';
+import BusinessSummarySection from '../components/admin/BusinessSummarySection';
+import ExpenseManagementSection from '../components/admin/ExpenseManagementSection';
 
 const CATEGORY_OPTIONS=[
   'Bat',
@@ -138,10 +141,16 @@ const Dashboard=()=>{
   const isEdit=Boolean(id);
   const tab=!isSeller
     ?'orders'
+    :location.pathname.includes('/business-summary')
+      ?'business-summary'
     :location.pathname.includes('/upload-stock-sheet')
       ?'upload-stock-sheet'
       :location.pathname.includes('/offline-sales')
         ?'offline-sales'
+        :location.pathname.includes('/bat-repair')
+          ?'bat-repair'
+          :location.pathname.includes('/expenses')
+            ?'expenses'
         :location.pathname.includes('/sales-report')
           ?'sales-report'
         :location.pathname.includes('/orders')
@@ -492,10 +501,13 @@ const Dashboard=()=>{
 
   const sidebar=isSeller?[
     ['overview','/admin',LayoutDashboard,'Overview'],
+    ['business-summary','/admin/business-summary',BarChart3,'Business Summary'],
     ['inventory','/admin/manage-products',Package,'Inventory'],
     ['form','/admin/add-product',Plus,isEdit?'Edit Product':'Add Product'],
     ['upload-stock-sheet','/admin/upload-stock-sheet',FileSpreadsheet,'Upload Stock Sheet'],
     ['offline-sales','/admin/offline-sales',ReceiptIndianRupee,'Offline Sales'],
+    ['bat-repair','/admin/bat-repair',Wrench,'Bat Repair'],
+    ['expenses','/admin/expenses',Wallet,'Expenses'],
     ['sales-report','/admin/sales-report',BarChart3,'Sales Report'],
     ['orders','/admin/orders',Users,'Orders']
   ]:[['orders','/profile',ShoppingBag,'Order History']];
@@ -503,13 +515,13 @@ const Dashboard=()=>{
   return <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-16"><div className="container-bound flex flex-col lg:flex-row gap-8 lg:gap-12">
     <aside className="w-full lg:w-72 shrink-0"><div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border sticky top-28">
       <div className="flex items-center gap-4 mb-8 pb-8 border-b border-slate-100 dark:border-dark-border"><div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-600 to-red-400 flex items-center justify-center text-white text-2xl font-black">{userInfo.name?.charAt(0).toUpperCase()}</div><div><h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">{userInfo.name}</h3><p className="text-xs font-bold text-primary-600 uppercase tracking-widest mt-1">{isSeller?'Approved Seller':'Customer Account'}</p></div></div>
-      <div className="space-y-2">{sidebar.map(([key,path,Icon,label])=><button key={key} onClick={()=>navigate(path)} className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-xl font-bold text-sm ${tab===key||((key==='form')&&isEdit)?'bg-primary-600 text-white':'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-dark-bg'}`}><Icon size={18}/>{label}</button>)}</div>
+      <div className="space-y-2">{sidebar.map((item)=>{const key=item[0]; const path=item[1]; const Icon=item[2]; const label=item[3]; return <button key={key} onClick={()=>navigate(path)} className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-xl font-bold text-sm ${tab===key||((key==='form')&&isEdit)?'bg-primary-600 text-white':'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-dark-bg'}`}><Icon size={18}/>{label}</button>;})}</div>
       <button onClick={onLogout} className="w-full mt-8 pt-8 border-t border-slate-100 dark:border-dark-border text-red-500 font-bold text-sm">Sign Out</button>
     </div></aside>
     <main className="flex-1 min-w-0 space-y-8">
       <section className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border"><h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{isSeller?'Store Operations':'Your Orders'}</h2><p className="text-slate-500 dark:text-slate-400">{isSeller?'Manage products, monitor orders, and keep the catalog reliable.':'Track your purchases, payment status, and delivery progress.'}</p></section>
 
-      {isSeller&&tab==='overview'&&<section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">{[[Package,'Total Products',products.length],[ShoppingBag,'Pending Orders',orders.filter(o=>!o.isDelivered).length],[CheckCircle2,'Delivered Orders',orders.filter(o=>o.isDelivered).length],[Users,'Seller Accounts',2]].map(([Icon,label,value])=><div key={label} className="bg-white dark:bg-dark-card p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border"><div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-900/20 text-primary-600 flex items-center justify-center mb-4"><Icon size={22}/></div><p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">{label}</p><p className="text-3xl font-black text-slate-900 dark:text-white">{value}</p></div>)}</section>}
+      {isSeller&&tab==='overview'&&<section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">{[[Package,'Total Products',products.length],[ShoppingBag,'Pending Orders',orders.filter(o=>!o.isDelivered).length],[CheckCircle2,'Delivered Orders',orders.filter(o=>o.isDelivered).length],[Users,'Seller Accounts',2]].map((item)=>{const Icon=item[0]; const label=item[1]; const value=item[2]; return <div key={label} className="bg-white dark:bg-dark-card p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border"><div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-900/20 text-primary-600 flex items-center justify-center mb-4"><Icon size={22}/></div><p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">{label}</p><p className="text-3xl font-black text-slate-900 dark:text-white">{value}</p></div>;})}</section>}
 
       {isSeller&&(tab==='overview'||tab==='inventory')&&<section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden"><div className="p-6 md:p-8 border-b border-slate-100 dark:border-dark-border flex flex-col sm:flex-row justify-between gap-4"><div><h3 className="text-2xl font-bold text-slate-900 dark:text-white">Product Inventory</h3><p className="text-slate-500 dark:text-slate-400 mt-1">Products are loaded directly from MongoDB and stay persistent across refresh and relogin.</p></div><div className="relative w-full sm:w-72"><Search className="absolute left-3.5 top-3 text-slate-400" size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products..." className="w-full bg-slate-50 dark:bg-dark-bg border border-slate-200 dark:border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 dark:text-white"/></div></div><div className="overflow-x-auto"><table className="w-full text-left border-collapse"><thead><tr className="bg-slate-50/80 dark:bg-dark-bg/80 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest"><th className="px-6 py-5 border-b">Product</th><th className="px-6 py-5 border-b text-center">Price</th><th className="px-6 py-5 border-b text-center">Category</th><th className="px-6 py-5 border-b text-center">Stock</th><th className="px-6 py-5 border-b text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-dark-border">{filtered.map(item=><tr key={item._id} className="hover:bg-slate-50/60 dark:hover:bg-dark-bg/50"><td className="px-6 py-4"><div className="flex items-center gap-4"><img src={getPrimaryProductImage(item)} alt={item.name} className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-dark-border shadow-sm ring-1 ring-slate-100 dark:ring-dark-border" onError={e=>{e.currentTarget.src=getPrimaryProductImage({});}}/><div><p className="font-bold text-slate-900 dark:text-white">{item.name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{item.brand}</p></div></div></td><td className="px-6 py-4 text-center"><div className="inline-flex flex-col items-center"><span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Selling Price</span><span className="text-lg font-extrabold text-slate-900 dark:text-white">{formatPrice(item.price)}</span></div></td><td className="px-6 py-4 text-center"><span className="bg-slate-100 dark:bg-dark-bg text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border uppercase tracking-wider">{item.category}</span></td><td className="px-6 py-4 text-center">{item.countInStock>0?<span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-3.5 py-2 rounded-full text-xs border border-emerald-200 dark:border-emerald-900/40 inline-flex items-center gap-1.5 shadow-sm"><CheckCircle2 size={14}/>{item.countInStock} in stock</span>:<span className="text-red-600 dark:text-red-300 font-bold bg-red-50 dark:bg-red-900/20 px-3.5 py-2 rounded-full text-xs border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1.5 shadow-sm"><XCircle size={14}/>Out of stock</span>}</td><td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={()=>navigate(`/admin/edit-product/${item._id}`)} className="p-3 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl border border-slate-200 dark:border-dark-border transition-all shadow-sm hover:shadow-md"><Edit size={16}/></button><button onClick={()=>onDelete(item._id)} className="p-3 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl border border-slate-200 dark:border-dark-border transition-all shadow-sm hover:shadow-md"><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div></section>}
 
@@ -518,6 +530,12 @@ const Dashboard=()=>{
       {isSeller&&tab==='upload-stock-sheet'&&<UploadStockSheetSection />}
 
       {isSeller&&tab==='offline-sales'&&<OfflineSalesSection />}
+
+      {isSeller&&tab==='bat-repair'&&<BatRepairSection />}
+
+      {isSeller&&tab==='expenses'&&<ExpenseManagementSection />}
+
+      {isSeller&&tab==='business-summary'&&<BusinessSummarySection />}
 
       {isSeller&&tab==='sales-report'&&<SalesReportSection />}
 

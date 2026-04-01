@@ -20,6 +20,15 @@ const getMonthStart = () => {
 const emptySummary = {
   totalOfflineSale: 0,
   totalOnlineSale: 0,
+  totalSalesAmount: 0,
+  totalSalesProfit: 0,
+  totalRepairIncome: 0,
+  totalRepairCost: 0,
+  totalRepairProfit: 0,
+  totalExpenses: 0,
+  netProfit: 0,
+  noSaleDaysCount: 0,
+  holidayDaysCount: 0,
   combinedTotalSale: 0,
   combinedTotalCost: 0,
   combinedTotalProfit: 0,
@@ -111,8 +120,16 @@ const SalesReportSection = () => {
 
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         {[
+          ['Total Sales Amount', formatPrice(report.summary.totalSalesAmount || 0)],
+          ['Total Sales Profit', formatPrice(report.summary.totalSalesProfit || 0)],
           ['Total Offline Sale', formatPrice(report.summary.totalOfflineSale || 0)],
           ['Total Online Sale', formatPrice(report.summary.totalOnlineSale || 0)],
+          ['Total Repair Income', formatPrice(report.summary.totalRepairIncome || 0)],
+          ['Total Repair Profit', formatPrice(report.summary.totalRepairProfit || 0)],
+          ['Total Expenses', formatPrice(report.summary.totalExpenses || 0)],
+          ['Net Profit', formatPrice(report.summary.netProfit || 0)],
+          ['No Sale Days Count', report.summary.noSaleDaysCount || 0],
+          ['Holiday Days Count', report.summary.holidayDaysCount || 0],
           ['Combined Total Sale', formatPrice(report.summary.combinedTotalSale || 0)],
           ['Combined Total Cost', formatPrice(report.summary.combinedTotalCost || 0)],
           ['Combined Total Profit', formatPrice(report.summary.combinedTotalProfit || 0)],
@@ -137,6 +154,7 @@ const SalesReportSection = () => {
                 <th className="px-6 py-5 border-b">Date</th>
                 <th className="px-6 py-5 border-b text-center">Offline Sale</th>
                 <th className="px-6 py-5 border-b text-center">Online Sale</th>
+                <th className="px-6 py-5 border-b text-center">Repair Income</th>
                 <th className="px-6 py-5 border-b text-center">Total Sale</th>
                 <th className="px-6 py-5 border-b text-center">Total Profit</th>
                 <th className="px-6 py-5 border-b text-center">Status</th>
@@ -145,7 +163,7 @@ const SalesReportSection = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
               {!loading && report.dailyBreakdown.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan="7" className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
                     No report data found for the selected range.
                   </td>
                 </tr>
@@ -155,6 +173,7 @@ const SalesReportSection = () => {
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{day.date}</td>
                   <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{formatPrice(day.offlineSale)}</td>
                   <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{formatPrice(day.onlineSale)}</td>
+                  <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{formatPrice(day.repairIncome)}</td>
                   <td className="px-6 py-4 text-center font-semibold text-slate-900 dark:text-white">{formatPrice(day.totalSale)}</td>
                   <td className="px-6 py-4 text-center font-semibold text-emerald-700 dark:text-emerald-300">{formatPrice(day.totalProfit)}</td>
                   <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{day.status || (day.totalSale > 0 ? '-' : 'No Sale')}</td>

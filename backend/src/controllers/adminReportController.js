@@ -1,5 +1,7 @@
 import OfflineSale from '../models/OfflineSale.js';
 import Order from '../models/Order.js';
+import BatRepair from '../models/BatRepair.js';
+import Expense from '../models/Expense.js';
 
 const roundCurrency = (value) => Number(Number(value || 0).toFixed(2));
 
@@ -49,11 +51,14 @@ const createEmptyDay = (date) => ({
   date,
   offlineSale: 0,
   onlineSale: 0,
+  repairIncome: 0,
+  expenses: 0,
   totalSale: 0,
   totalProfit: 0,
   status: '',
   offlineTransactions: 0,
   onlineTransactions: 0,
+  repairTransactions: 0,
   totalQuantitySold: 0,
 });
 
@@ -83,32 +88,49 @@ const isValidOfflineSalesRow = (entry) => {
   );
 };
 
-export const getSalesReport = async (req, res) => {
-  const normalizedRange = normalizeRange(req.query);
+const HOLIDAY_DAY_STATUSES = new Set(['Holiday', 'Closed', 'Sunday']);
+
+const buildReportData = async (query = {}) => {
+  const normalizedRange = normalizeRange(query);
 
   if (!normalizedRange) {
-    res.status(400);
-    throw new Error('Valid from/to dates are required');
+    return null;
   }
 
   const { fromDate, toDate } = normalizedRange;
   const dateKeys = enumerateDateKeys(fromDate, toDate);
   const dayMap = new Map(dateKeys.map((date) => [date, createEmptyDay(date)]));
 
-  const offlineSales = await OfflineSale.find({
-    saleDate: { $gte: fromDate, $lte: toDate },
-  }).sort({ saleDate: 1, createdAt: 1 });
-
-  const onlineOrders = await Order.find({
-    isPaid: true,
-    paidAt: { $gte: fromDate, $lte: toDate },
-  })
-    .populate('orderItems.product', 'costPrice')
-    .sort({ paidAt: 1, createdAt: 1 });
+  const [offlineSales, batRepairs, expenses, onlineOrders] = await Promise.all([
+    OfflineSale.find({
+      saleDate: { $gte: fromDate, $lte: toDate },
+    }).sort({ saleDate: 1, createdAt: 1 }),
+    BatRepair.find({
+      date: { $gte: fromDate, $lte: toDate },
+    }).sort({ date: 1, createdAt: 1 }),
+    Expense.find({
+      date: { $gte: fromDate, $lte: toDate },
+    }).sort({ date: 1, createdAt: 1 }),
+    Order.find({
+      isPaid: true,
+      paidAt: { $gte: fromDate, $lte: toDate },
+    })
+      .populate('orderItems.product', 'costPrice')
+      .sort({ paidAt: 1, createdAt: 1 }),
+  ]);
 
   const summary = {
     totalOfflineSale: 0,
     totalOnlineSale: 0,
+    totalSalesAmount: 0,
+    totalSalesProfit: 0,
+    totalRepairIncome: 0,
+    totalRepairCost: 0,
+    totalRepairProfit: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    noSaleDaysCount: 0,
+    holidayDaysCount: 0,
     combinedTotalSale: 0,
     combinedTotalCost: 0,
     combinedTotalProfit: 0,
@@ -139,15 +161,49 @@ export const getSalesReport = async (req, res) => {
     day.totalProfit = roundCurrency(day.totalProfit + entryProfit);
     day.offlineTransactions += 1;
     day.totalQuantitySold += entryQty;
-
     dayMap.set(key, day);
 
     summary.totalOfflineSale = roundCurrency(summary.totalOfflineSale + entrySale);
+    summary.totalSalesAmount = roundCurrency(summary.totalSalesAmount + entrySale);
+    summary.totalSalesProfit = roundCurrency(summary.totalSalesProfit + entryProfit);
     summary.combinedTotalSale = roundCurrency(summary.combinedTotalSale + entrySale);
     summary.combinedTotalCost = roundCurrency(summary.combinedTotalCost + entryCost);
     summary.combinedTotalProfit = roundCurrency(summary.combinedTotalProfit + entryProfit);
     summary.totalTransactions += 1;
     summary.totalQuantitySold += entryQty;
+  });
+
+  batRepairs.forEach((repair) => {
+    const key = getDateKey(repair.date);
+    const day = dayMap.get(key) || createEmptyDay(key);
+    const repairIncome = roundCurrency(Number(repair.charge));
+    const repairCost = roundCurrency(Number(repair.cost));
+    const repairProfit = roundCurrency(Number(repair.profit));
+
+    day.repairIncome = roundCurrency(day.repairIncome + repairIncome);
+    day.totalSale = roundCurrency(day.totalSale + repairIncome);
+    day.totalProfit = roundCurrency(day.totalProfit + repairProfit);
+    day.repairTransactions += 1;
+    dayMap.set(key, day);
+
+    summary.totalRepairIncome = roundCurrency(summary.totalRepairIncome + repairIncome);
+    summary.totalRepairCost = roundCurrency(summary.totalRepairCost + repairCost);
+    summary.totalRepairProfit = roundCurrency(summary.totalRepairProfit + repairProfit);
+    summary.combinedTotalSale = roundCurrency(summary.combinedTotalSale + repairIncome);
+    summary.combinedTotalCost = roundCurrency(summary.combinedTotalCost + repairCost);
+    summary.combinedTotalProfit = roundCurrency(summary.combinedTotalProfit + repairProfit);
+    summary.totalTransactions += 1;
+  });
+
+  expenses.forEach((expense) => {
+    const key = getDateKey(expense.date);
+    const day = dayMap.get(key) || createEmptyDay(key);
+    const amount = roundCurrency(Number(expense.amount));
+
+    day.expenses = roundCurrency(day.expenses + amount);
+    dayMap.set(key, day);
+
+    summary.totalExpenses = roundCurrency(summary.totalExpenses + amount);
   });
 
   onlineOrders.forEach((order) => {
@@ -174,6 +230,8 @@ export const getSalesReport = async (req, res) => {
     dayMap.set(key, day);
 
     summary.totalOnlineSale = roundCurrency(summary.totalOnlineSale + orderSale);
+    summary.totalSalesAmount = roundCurrency(summary.totalSalesAmount + orderSale);
+    summary.totalSalesProfit = roundCurrency(summary.totalSalesProfit + orderProfit);
     summary.combinedTotalSale = roundCurrency(summary.combinedTotalSale + orderSale);
     summary.combinedTotalCost = roundCurrency(summary.combinedTotalCost + orderCost);
     summary.combinedTotalProfit = roundCurrency(summary.combinedTotalProfit + orderProfit);
@@ -183,12 +241,45 @@ export const getSalesReport = async (req, res) => {
 
   const dailyBreakdown = dateKeys.map((date) => dayMap.get(date) || createEmptyDay(date));
 
-  res.json({
+  summary.noSaleDaysCount = dailyBreakdown.filter((day) => day.status === 'No Sale').length;
+  summary.holidayDaysCount = dailyBreakdown.filter((day) =>
+    HOLIDAY_DAY_STATUSES.has(day.status)
+  ).length;
+  summary.netProfit = roundCurrency(
+    summary.totalSalesProfit + summary.totalRepairProfit - summary.totalExpenses
+  );
+
+  return {
     range: {
       from: getDateKey(fromDate),
       to: getDateKey(toDate),
     },
     summary,
     dailyBreakdown,
+  };
+};
+
+export const getSalesReport = async (req, res) => {
+  const reportData = await buildReportData(req.query);
+
+  if (!reportData) {
+    res.status(400);
+    throw new Error('Valid from/to dates are required');
+  }
+
+  res.json(reportData);
+};
+
+export const getBusinessSummary = async (req, res) => {
+  const reportData = await buildReportData(req.query);
+
+  if (!reportData) {
+    res.status(400);
+    throw new Error('Valid from/to dates are required');
+  }
+
+  res.json({
+    range: reportData.range,
+    summary: reportData.summary,
   });
 };

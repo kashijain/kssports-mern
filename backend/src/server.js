@@ -12,6 +12,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import adminInventoryRoutes from './routes/adminInventoryRoutes.js';
 import adminReportRoutes from './routes/adminReportRoutes.js';
+import batRepairRoutes from './routes/batRepairRoutes.js';
+import expenseRoutes from './routes/expenseRoutes.js';
 
 dotenv.config();
 
@@ -63,6 +65,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin-inventory', adminInventoryRoutes);
 app.use('/api/admin-reports', adminReportRoutes);
+app.use('/api/bat-repairs', batRepairRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 const __dirname = path.resolve();
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));

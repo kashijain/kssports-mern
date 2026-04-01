@@ -68,12 +68,15 @@ const App = () => {
 
             <Route element={<ProtectedRoute sellerOnly />}>
               <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin/business-summary" element={<Dashboard />} />
               <Route path="/admin/add-product" element={<Dashboard />} />
               <Route path="/admin/manage-products" element={<Dashboard />} />
               <Route path="/admin/edit-product/:id" element={<Dashboard />} />
               <Route path="/admin/orders" element={<Dashboard />} />
               <Route path="/admin/upload-stock-sheet" element={<Dashboard />} />
               <Route path="/admin/offline-sales" element={<Dashboard />} />
+              <Route path="/admin/bat-repair" element={<Dashboard />} />
+              <Route path="/admin/expenses" element={<Dashboard />} />
               <Route path="/admin/sales-report" element={<Dashboard />} />
             </Route>
 
