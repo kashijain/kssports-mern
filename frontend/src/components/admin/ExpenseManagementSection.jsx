@@ -107,7 +107,7 @@ const ExpenseManagementSection = () => {
 
   return (
     <div className="space-y-8">
-      <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border p-6 md:p-8 space-y-6">
+      <section className="panel-premium p-6 md:p-8 space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Expenses</h3>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -189,18 +189,18 @@ const ExpenseManagementSection = () => {
       </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-dark-card p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border">
+        <div className="metric-card">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">Total Expenses</p>
           <p className="text-3xl font-black text-slate-900 dark:text-white">{formatPrice(summary.totalExpenses || 0)}</p>
         </div>
       </section>
 
-      <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+      <section className="table-shell">
         <div className="p-6 md:p-8 border-b border-slate-100 dark:border-dark-border">
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Expense Entries</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="table-premium">
             <thead>
               <tr className="bg-slate-50/80 dark:bg-dark-bg/80 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest">
                 <th className="px-6 py-5 border-b">Date</th>

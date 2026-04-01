@@ -46,10 +46,10 @@ const Home = () => {
   }, [fetchProducts]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg">
+    <div className="min-h-screen bg-transparent">
       
       {/* Premium Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-20">
+      <section className="relative flex min-h-[92vh] items-center justify-center overflow-hidden">
         {/* Background Gradients */}
         <div className="absolute top-0 right-0 w-full h-full bg-slate-950 z-0"></div>
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary-900/40 blur-[120px] mix-blend-screen z-0"></div>
@@ -86,7 +86,7 @@ const Home = () => {
                <Link to="/shop" className="btn-primary px-8 py-4 text-lg">
                   Shop Collection <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                </Link>
-               <a href="#categories" className="px-8 py-4 text-lg rounded-xl font-semibold text-white bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md transition-all duration-300 flex items-center justify-center gap-2">
+               <a href="#categories" className="btn-secondary border-white/10 bg-white/5 px-8 py-4 text-lg text-white backdrop-blur-md hover:bg-white/10 hover:text-white">
                   Explore Categories
                </a>
             </div>
@@ -127,7 +127,7 @@ const Home = () => {
       </section>
 
       {/* Features Banner */}
-      <section className="py-12 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-dark-border relative z-10 shadow-sm">
+      <section className="relative z-10 border-y border-white/40 bg-white/70 py-12 backdrop-blur-xl dark:border-white/5 dark:bg-dark-card/60">
         <div className="container-bound">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {features.map((feat, idx) => (
@@ -153,11 +153,11 @@ const Home = () => {
       </section>
 
       {/* Categories Section */}
-      <section id="categories" className="section-padding bg-slate-50 dark:bg-dark-bg">
+      <section id="categories" className="section-padding">
         <div className="container-bound">
           <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
             <div>
-              <span className="text-primary-600 font-bold tracking-wider uppercase text-sm mb-2 block">Collections</span>
+              <span className="section-kicker">Collections</span>
               <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">Shop by Category</h2>
             </div>
             <Link to="/shop" className="btn-secondary group shrink-0">
@@ -192,10 +192,10 @@ const Home = () => {
       </section>
 
       {/* Featured Products Component */}
-      <section className="section-padding bg-white dark:bg-dark-card border-y border-slate-100 dark:border-dark-border">
+      <section className="section-padding border-y border-white/40 bg-white/70 backdrop-blur-xl dark:border-white/5 dark:bg-dark-card/60">
         <div className="container-bound">
           <div className="text-center mb-16">
-            <span className="text-primary-600 font-bold tracking-wider uppercase text-sm mb-3 block">Top Picks</span>
+            <span className="section-kicker justify-center">Top Picks</span>
             <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight">Trending Gear</h2>
             <div className="w-24 h-1.5 bg-primary-600 rounded-full mx-auto"></div>
           </div>
@@ -227,7 +227,7 @@ const Home = () => {
       </section>
 
       {/* Why Choose Us & Reviews */}
-      <section className="section-padding bg-slate-50 dark:bg-dark-bg">
+      <section className="section-padding">
         <div className="container-bound">
           <div className="flex flex-col lg:flex-row gap-16 items-center">
             
@@ -261,7 +261,7 @@ const Home = () => {
 
             {/* Content Side - Reviews */}
             <div className="w-full lg:w-1/2">
-              <span className="text-primary-600 font-bold tracking-wider uppercase text-sm mb-3 block">Testimonials</span>
+              <span className="section-kicker">Testimonials</span>
               <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-10 tracking-tight">What Champions Say</h2>
               
               <div className="flex flex-col gap-6">
@@ -297,7 +297,7 @@ const Home = () => {
       </section>
 
       {/* Featured Brands */}
-      <section className="py-12 bg-white dark:bg-dark-card border-t border-slate-100 dark:border-dark-border">
+      <section className="border-t border-white/40 bg-white/70 py-12 backdrop-blur-xl dark:border-white/5 dark:bg-dark-card/60">
         <div className="container-bound">
           <p className="text-center text-sm font-semibold text-slate-500 mb-8 uppercase tracking-widest">Trusted Partners & Top Brands</p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">

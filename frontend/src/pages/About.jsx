@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const About = () => {
   return (
-    <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-20 overflow-hidden">
+    <div className="min-h-screen overflow-hidden bg-transparent pb-20">
       
       {/* Hero Section */}
       <div className="relative pt-12 pb-20 md:pt-20 md:pb-32 container-bound">
@@ -28,7 +28,7 @@ const About = () => {
 
       {/* Origin Story */}
       <div className="container-bound mb-24">
-         <div className="bg-white dark:bg-dark-card rounded-[2rem] shadow-premium dark:shadow-dark-premium border border-slate-100 dark:border-dark-border overflow-hidden flex flex-col lg:flex-row">
+         <div className="panel-premium flex flex-col overflow-hidden p-0 lg:flex-row">
             <div className="lg:w-1/2 relative min-h-[400px]">
                <img src="https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&q=80" alt="Athletes in training" className="absolute inset-0 w-full h-full object-cover" />
                <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 to-transparent"></div>
@@ -73,7 +73,7 @@ const About = () => {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
                   key={i} 
-                  className="bg-white dark:bg-dark-card p-8 rounded-3xl border border-slate-100 dark:border-dark-border shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group"
+                  className="metric-card p-8 group"
                >
                   <div className="w-16 h-16 bg-primary-50 dark:bg-primary-900/20 text-primary-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
                      <value.icon size={28} />

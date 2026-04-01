@@ -33,7 +33,7 @@ const UploadStockSheetSection = () => {
   };
 
   return (
-    <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border p-6 md:p-8 space-y-6">
+    <section className="panel-premium p-6 md:p-8 space-y-6">
       <div>
         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Upload Stock Sheet</h3>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -82,7 +82,7 @@ const UploadStockSheetSection = () => {
             ].map(([label, value]) => (
               <div
                 key={label}
-                className="bg-slate-50 dark:bg-dark-bg border border-slate-200 dark:border-dark-border rounded-2xl p-4"
+                className="metric-card rounded-2xl p-4"
               >
                 <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p>
                 <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">{value}</p>

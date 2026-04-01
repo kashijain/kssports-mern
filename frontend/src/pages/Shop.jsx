@@ -85,12 +85,13 @@ const Shop = () => {
   const isDataLoading = loading || localLoading;
 
   return (
-    <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-24">
-      {/* Page Header */}
-      <div className="bg-white dark:bg-dark-card border-y border-slate-200 dark:border-dark-border py-12 md:py-16 mb-12 shadow-sm">
-        <div className="container-bound flex flex-col items-center text-center">
+    <div className="min-h-screen bg-transparent pb-24">
+      <div className="container-bound pt-8">
+        <div className="panel-premium surface-grid relative mb-12 overflow-hidden py-14 md:py-16">
+          <div className="absolute inset-0 hero-glow opacity-60"></div>
+          <div className="relative flex flex-col items-center text-center">
           <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">
-            Premium <span className="text-gradient">Collections</span>
+            Premium <span className="text-primary-600 dark:text-primary-400">Collections</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg">
             Browse our complete catalog of professional-grade sports equipment.
@@ -98,13 +99,14 @@ const Shop = () => {
           </p>
         </div>
       </div>
+      </div>
 
       <div className="container-bound">
         <div className="flex flex-col lg:flex-row gap-10">
           {/* Sidebar / Filters */}
           <div className="lg:w-1/4 hidden lg:block space-y-8">
             {/* Search Box */}
-            <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
+            <div className="panel-premium">
               <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
                 <Search size={16} className="text-primary-600" /> Search Catalog
               </h3>
@@ -139,7 +141,7 @@ const Shop = () => {
             </div>
 
             {/* Category Filter */}
-            <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
+            <div className="panel-premium">
               <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
                 <Filter size={16} className="text-primary-600" /> Categories
               </h3>
@@ -218,7 +220,7 @@ const Shop = () => {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                  <div className="panel-premium p-5">
                     <h3 className="font-bold text-slate-900 dark:text-white mb-3 text-sm uppercase tracking-wider">
                       Categories
                     </h3>
@@ -255,7 +257,7 @@ const Shop = () => {
                 {category === "All" ? "All Products" : category}
               </h2>
 
-              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm bg-white dark:bg-dark-card px-4 py-2 rounded-full border border-slate-200 dark:border-dark-border shadow-sm">
+              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm bg-white/90 dark:bg-dark-card/90 px-4 py-2 rounded-full border border-slate-200 dark:border-dark-border shadow-sm">
                 <span className="font-bold text-slate-900 dark:text-white">
                   {isDataLoading ? "..." : filteredProducts.length}
                 </span>{" "}
@@ -284,7 +286,7 @@ const Shop = () => {
                   </motion.div>
                 ))
               ) : (
-                <div className="col-span-full py-24 text-center bg-white dark:bg-dark-card rounded-3xl border border-slate-200 dark:border-dark-border border-dashed shadow-sm">
+                <div className="empty-state col-span-full">
                   <div className="w-20 h-20 bg-primary-50 dark:bg-primary-900/10 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Search size={32} className="text-primary-600" />
                   </div>

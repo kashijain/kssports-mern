@@ -185,7 +185,7 @@ const Cart = () => {
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-20">
+    <div className="min-h-screen bg-transparent pb-20">
       <div className="container-bound max-w-7xl">
         <div className="mb-10 text-center md:text-left">
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">Shopping Cart</h1>
@@ -197,7 +197,7 @@ const Cart = () => {
         {cartItems.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="text-center py-24 bg-white dark:bg-dark-card rounded-3xl border border-slate-100 dark:border-dark-border shadow-sm flex flex-col items-center"
+            className="empty-state"
           >
             <div className="w-24 h-24 bg-slate-50 dark:bg-dark-bg rounded-full flex items-center justify-center mb-6 text-slate-400 border border-slate-100 dark:border-dark-border">
               <ShoppingBag size={40} />
@@ -215,7 +215,7 @@ const Cart = () => {
             
             {/* Cart Items List */}
             <div className="lg:w-2/3">
-              <div className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+              <div className="table-shell">
                 <div className="p-6 md:px-8 md:py-5 hidden sm:grid grid-cols-12 gap-4 border-b border-slate-200 dark:border-dark-border bg-slate-50/50 dark:bg-dark-bg text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
                   <div className="col-span-6 flex items-center">Product Details</div>
                   <div className="col-span-3 text-center flex items-center justify-center">Quantity</div>
@@ -285,7 +285,7 @@ const Cart = () => {
 
             {/* Order Summary Sidebar */}
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="lg:w-1/3">
-              <div className="bg-white dark:bg-dark-card rounded-3xl shadow-md border border-slate-100 dark:border-dark-border p-6 md:p-8 sticky top-28">
+              <div className="panel-premium sticky top-28 p-6 md:p-8">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">Order Summary</h2>
                 
                 {/* Promo Code */}

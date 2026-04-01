@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 const Contact = () => {
   return (
-    <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-20">
+    <div className="min-h-screen bg-transparent pb-20">
       
       <div className="container-bound">
          {/* Header */}
@@ -20,7 +20,7 @@ const Contact = () => {
             
             {/* Contact Info */}
 <div className="lg:col-span-5 space-y-8">
-  <div className="bg-slate-900 dark:bg-dark-card rounded-3xl p-8 md:p-10 shadow-premium text-white relative overflow-hidden h-full">
+  <div className="relative h-full overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-premium md:p-10 dark:bg-dark-card">
     
     <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/20 rounded-full blur-[80px]"></div>
     
@@ -130,7 +130,7 @@ const Contact = () => {
                <motion.div 
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white dark:bg-dark-card rounded-3xl p-8 md:p-12 shadow-sm border border-slate-100 dark:border-dark-border"
+                  className="panel-premium p-8 md:p-12"
                >
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-8">Send us a Message</h3>
                   

@@ -91,7 +91,7 @@ const BatRepairSection = () => {
 
   return (
     <div className="space-y-8">
-      <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border p-6 md:p-8 space-y-6">
+      <section className="panel-premium p-6 md:p-8 space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bat Repair</h3>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -203,19 +203,19 @@ const BatRepairSection = () => {
           ['Total Repair Cost', formatPrice(summary.totalRepairCost || 0)],
           ['Total Repair Profit', formatPrice(summary.totalRepairProfit || 0)],
         ].map(([label, value]) => (
-          <div key={label} className="bg-white dark:bg-dark-card p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border">
+          <div key={label} className="metric-card">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">{label}</p>
             <p className="text-3xl font-black text-slate-900 dark:text-white">{value}</p>
           </div>
         ))}
       </section>
 
-      <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+      <section className="table-shell">
         <div className="p-6 md:p-8 border-b border-slate-100 dark:border-dark-border">
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bat Repair Entries</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="table-premium">
             <thead>
               <tr className="bg-slate-50/80 dark:bg-dark-bg/80 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest">
                 <th className="px-6 py-5 border-b">Date</th>

@@ -9,10 +9,9 @@ const Wishlist = () => {
   const { wishlistItems, clearWishlist } = useWishlistStore();
 
   return (
-    <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-24">
-      {/* Page Header */}
-      <div className="bg-white dark:bg-dark-card border-y border-slate-200 dark:border-dark-border py-12 md:py-16 mb-12 shadow-sm">
-        <div className="container-bound flex flex-col items-center text-center">
+    <div className="min-h-screen bg-transparent pb-24">
+      <div className="container-bound pt-8">
+        <div className="panel-premium mb-12 flex flex-col items-center text-center py-12 md:py-16">
           <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
             <Heart size={30} className="fill-red-500" />
           </div>
@@ -29,7 +28,7 @@ const Wishlist = () => {
         {wishlistItems.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="text-center py-24 bg-white dark:bg-dark-card rounded-3xl border border-slate-100 dark:border-dark-border shadow-sm flex flex-col items-center"
+            className="empty-state"
           >
             <div className="w-24 h-24 bg-slate-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6 text-slate-400">
               <Heart size={40} />

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Heart, LogOut, Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
 import { useCartStore, useAuthStore, useThemeStore } from '../../store/useStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
-import { ShoppingBag, Heart, User, Menu, X, Moon, Sun, Search, LogOut } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -48,133 +48,130 @@ const Navbar = () => {
     navigate('/login');
   };
 
+  const isActive = (path) => location.pathname === path;
+
   return (
-    <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled 
-          ? 'glass-effect shadow-md py-3' 
-          : 'bg-white/90 dark:bg-dark-bg/90 backdrop-blur-sm py-5'
+    <header
+      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? 'glass-effect border-b border-white/50 py-3 shadow-[0_26px_55px_-34px_rgba(15,23,42,0.72)]'
+          : 'border-b border-transparent bg-white/78 py-4 backdrop-blur-xl dark:bg-dark-bg/80'
       }`}
     >
-      <div className="container-bound flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-xl group-hover:scale-105 transition-transform shadow-lg shadow-primary-600/40">
+      <div className="container-bound flex items-center justify-between gap-4">
+        <Link to="/" className="group flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-gradient-to-br from-primary-500 via-primary-600 to-primary-800 text-white shadow-[0_18px_38px_-16px_rgba(220,38,38,0.75)] transition-transform group-hover:scale-105">
             KS
           </div>
-          <span className="font-bold text-2xl tracking-tight dark:text-white">
-            K.S. <span className="text-primary-600">Sports</span>
-          </span>
+          <div className="leading-none">
+            <span className="block text-xl font-black tracking-[0.16em] text-slate-900 dark:text-white">K.S. SPORTS</span>
+            <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500 dark:text-slate-400">Premium Athletic Goods</span>
+          </div>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden items-center gap-1 rounded-full border border-white/60 bg-white/70 px-3 py-2 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.65)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5 md:flex">
           {navLinks.map((link) => (
-            <Link 
-              key={link.name} 
+            <Link
+              key={link.name}
               to={link.path}
-              className={`font-medium text-sm lg:text-base relative group transition-colors ${
-                location.pathname === link.path ? 'text-primary-600' : 'text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400'
+              className={`rounded-full px-4 py-2.5 text-sm font-semibold transition-all ${
+                isActive(link.path)
+                  ? 'bg-slate-950 text-white shadow-[0_16px_30px_-20px_rgba(15,23,42,0.85)] dark:bg-white dark:text-slate-900'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white'
               }`}
             >
               {link.name}
-              <span className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-600 transition-all duration-300 group-hover:w-full ${location.pathname === link.path ? 'w-full' : ''}`}></span>
             </Link>
           ))}
         </nav>
 
-        {/* Action Icons Desktop */}
-        <div className="hidden md:flex items-center gap-5">
-          <button onClick={toggleTheme} className="text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors">
+        <div className="hidden items-center gap-3 md:flex">
+          <button onClick={toggleTheme} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400">
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          
-          <button className="text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors">
+          <button className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400">
             <Search size={20} />
           </button>
-          
-          <Link to="/wishlist" className="relative text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors">
+          <Link to="/wishlist" className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400">
             <Heart size={20} />
-            {wishlistCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center">
-                {wishlistCount}
-              </span>
-            )}
+            {wishlistCount > 0 && <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white shadow-lg shadow-primary-600/30">{wishlistCount}</span>}
           </Link>
-
-          <Link to="/cart" className="relative text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors">
+          <Link to="/cart" className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400">
             <ShoppingBag size={20} />
-            {cartItemsCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {cartItemsCount}
-              </span>
-            )}
+            {cartItemsCount > 0 && <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white shadow-lg shadow-primary-600/30">{cartItemsCount}</span>}
           </Link>
 
           {userInfo ? (
-            <div className="relative group cursor-pointer flex items-center gap-2 text-slate-600 dark:text-slate-300">
-              <User size={20} />
-              <div className="absolute top-8 right-0 w-48 bg-white dark:bg-dark-card rounded-xl shadow-premium border border-slate-100 dark:border-dark-border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden flex flex-col pt-2 pb-2">
-                <div className="px-4 py-2 border-b border-slate-100 dark:border-dark-border mb-2">
-                  <p className="font-semibold text-sm truncate">{userInfo.name}</p>
+            <div className="group relative cursor-pointer">
+              <div className="flex items-center gap-3 rounded-full border border-white/60 bg-white/75 px-3 py-2 shadow-[0_18px_35px_-26px_rgba(15,23,42,0.75)] backdrop-blur-xl transition-all dark:border-white/10 dark:bg-white/5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-950 text-white dark:bg-white dark:text-slate-900">
+                  <User size={18} />
                 </div>
-                <Link to={userInfo.role === 'seller' ? "/admin" : "/profile"} className="px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-dark-border transition-colors">{userInfo.role === 'seller' ? 'Seller Dashboard' : 'Dashboard'}</Link>
-                <button onClick={handleLogout} className="px-4 py-2 text-sm text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2">
+                <div className="max-w-[130px]">
+                  <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{userInfo.name}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500 dark:text-slate-400">{userInfo.role === 'seller' ? 'Seller' : 'Account'}</p>
+                </div>
+              </div>
+              <div className="invisible absolute right-0 top-16 flex w-56 flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/95 p-2 opacity-0 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.5)] transition-all duration-200 group-hover:visible group-hover:opacity-100 dark:border-white/10 dark:bg-dark-card/96">
+                <div className="mb-2 rounded-2xl bg-slate-100/80 px-4 py-3 dark:bg-dark-bg/80">
+                  <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{userInfo.name}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500 dark:text-slate-400">{userInfo.email}</p>
+                </div>
+                <Link to={userInfo.role === 'seller' ? '/admin' : '/profile'} className="rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white">
+                  {userInfo.role === 'seller' ? 'Seller Dashboard' : 'Dashboard'}
+                </Link>
+                <button onClick={handleLogout} className="mt-1 flex items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20">
                   <LogOut size={14} /> Logout
                 </button>
               </div>
             </div>
           ) : (
-            <Link to="/login" className="btn-primary py-2 px-5 text-sm">
+            <Link to="/login" className="btn-primary px-5 py-2.5 text-sm">
               Login
             </Link>
           )}
         </div>
 
-        {/* Mobile Menu Toggle */}
-        <div className="md:hidden flex items-center gap-4">
-          <Link to="/cart" className="relative text-slate-600 dark:text-slate-300">
+        <div className="flex items-center gap-3 md:hidden">
+          <Link to="/cart" className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             <ShoppingBag size={22} />
-            {cartItemsCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {cartItemsCount}
-              </span>
-            )}
+            {cartItemsCount > 0 && <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white shadow-lg shadow-primary-600/30">{cartItemsCount}</span>}
           </Link>
-          <button 
-            className="text-slate-900 dark:text-white"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+          <button className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-900 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] dark:border-white/10 dark:bg-white/5 dark:text-white" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-full left-0 right-0 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-dark-border shadow-lg p-5 flex flex-col gap-4 md:hidden"
+            className="absolute left-4 right-4 top-full mt-3 rounded-[28px] border border-white/60 bg-white/95 p-5 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.72)] backdrop-blur-xl dark:border-white/10 dark:bg-dark-card/96 md:hidden"
           >
-            {navLinks.map((link) => (
-              <Link 
-                key={link.name} 
-                to={link.path}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-lg font-medium text-slate-800 dark:text-slate-200 hover:text-primary-600 dark:hover:text-primary-400 border-b border-slate-100 dark:border-dark-border pb-2"
-              >
-                {link.name}
-              </Link>
-            ))}
-            
-            <div className="flex items-center justify-between pt-4">
+            <div className="flex flex-col gap-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`rounded-2xl px-4 py-3 text-base font-semibold transition-colors ${
+                    isActive(link.path)
+                      ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-900'
+                      : 'text-slate-800 hover:bg-slate-50 hover:text-primary-600 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-primary-400'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-100/80 px-4 py-3 dark:bg-dark-bg/80">
               <button onClick={toggleTheme} className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
                 {theme === 'dark' ? <><Sun size={20} /> Light Mode</> : <><Moon size={20} /> Dark Mode</>}
               </button>
-              
               <Link to="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
                 <Heart size={20} /> Wishlist {wishlistCount > 0 ? `(${wishlistCount})` : ''}
               </Link>
@@ -182,10 +179,10 @@ const Navbar = () => {
 
             {userInfo ? (
               <div className="pt-4 flex flex-col gap-3">
-                <Link to={userInfo.role === 'seller' ? "/admin" : "/profile"} onClick={() => setIsMobileMenuOpen(false)} className="btn-secondary w-full justify-center">
+                <Link to={userInfo.role === 'seller' ? '/admin' : '/profile'} onClick={() => setIsMobileMenuOpen(false)} className="btn-secondary w-full justify-center">
                   {userInfo.role === 'seller' ? 'Seller Dashboard' : 'Dashboard'}
                 </Link>
-                <button onClick={handleLogout} className="btn-primary bg-red-500 hover:bg-red-600 shadow-red-500/30 w-full justify-center">
+                <button onClick={handleLogout} className="btn-primary w-full justify-center bg-gradient-to-b from-red-500 via-red-600 to-red-700 border-red-500/70 shadow-[0_18px_40px_-18px_rgba(239,68,68,0.7)]">
                   Logout
                 </button>
               </div>

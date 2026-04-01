@@ -46,11 +46,11 @@ const App = () => {
     <Router>
       <ScrollToTop />
 
-      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-dark-text transition-colors duration-300 font-sans">
+      <div className="min-h-screen flex flex-col bg-transparent text-slate-900 dark:text-dark-text transition-colors duration-300 font-sans">
         
         <Navbar />
 
-        <main className="flex-grow">
+        <main className="flex-grow pt-20">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/shop" element={<Shop />} />
@@ -93,10 +93,12 @@ const App = () => {
           toastOptions={{
             duration: 3000,
             style: {
-              background: '#111827',
+              background: '#10141d',
               color: '#fff',
-              borderRadius: '12px',
-              padding: '16px',
+              borderRadius: '18px',
+              padding: '16px 18px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 24px 60px -24px rgba(0,0,0,0.75)',
             }
           }} 
         />

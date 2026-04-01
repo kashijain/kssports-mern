@@ -30,16 +30,17 @@ const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="card-premium group relative flex flex-col h-full bg-white dark:bg-dark-card rounded-2xl overflow-hidden transition-all duration-500 border border-slate-100 dark:border-dark-border shadow-sm">
+    <div className="card-premium group relative flex h-full flex-col overflow-hidden">
       
       {/* Image Container with Zoom effect */}
-      <Link to={`/product/${product._id}`} className="relative aspect-[4/5] overflow-hidden bg-slate-100 dark:bg-gray-800/80 block">
+      <Link to={`/product/${product._id}`} className="relative block aspect-[4/5] overflow-hidden bg-slate-100 dark:bg-gray-800/80">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/30 opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
         {product.countInStock === 0 && (
-          <div className="absolute top-3 left-3 z-10 bg-red-500/90 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+          <div className="absolute left-4 top-4 z-10 rounded-full border border-red-400/30 bg-red-500/90 px-3 py-1.5 text-xs font-bold text-white shadow-sm backdrop-blur-md">
             Sold Out
           </div>
         )}
-        <div className="absolute top-3 right-3 z-10 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md text-slate-800 dark:text-white text-xs font-bold px-2 py-1.5 rounded-full shadow-sm flex items-center gap-1 border border-slate-200 dark:border-dark-border">
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-full border border-slate-200 bg-white/92 px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-sm backdrop-blur-md dark:border-dark-border dark:bg-dark-card/90 dark:text-white">
           <Star size={12} className="fill-yellow-400 text-yellow-400" />
           {product.rating}
         </div>
@@ -55,7 +56,7 @@ const ProductCard = ({ product }) => {
         />
         
         {/* Quick Actions (Hover) */}
-        <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 transform translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex justify-center gap-3 bg-gradient-to-t from-black/60 to-transparent">
+        <div className="absolute inset-x-0 bottom-0 flex translate-y-4 justify-center gap-3 bg-gradient-to-t from-black/60 via-black/15 to-transparent p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <button 
             onClick={handleWishlistToggle}
             className="w-10 h-10 bg-white dark:bg-dark-card rounded-full flex items-center justify-center text-slate-700 dark:text-gray-200 shadow-xl hover:scale-110 transition-transform"
@@ -69,8 +70,8 @@ const ProductCard = ({ product }) => {
       </Link>
 
       {/* Content Container */}
-      <div className="p-5 flex flex-col flex-grow relative bg-white dark:bg-dark-card z-10">
-        <Link to={`/shop?category=${product.category}`} className="text-xs text-primary-600 dark:text-primary-400 font-bold mb-1.5 uppercase tracking-wider hover:text-red-500 transition-colors inline-block w-fit">
+      <div className="relative z-10 flex flex-grow flex-col bg-white/95 p-5 dark:bg-dark-card/95">
+        <Link to={`/shop?category=${product.category}`} className="mb-2 inline-flex w-fit items-center rounded-full border border-primary-500/15 bg-primary-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-primary-700 transition-colors hover:text-red-500 dark:border-primary-500/20 dark:bg-primary-500/12 dark:text-primary-300">
           {product.category}
         </Link>
         
@@ -81,9 +82,9 @@ const ProductCard = ({ product }) => {
         </Link>
 
         {/* Price & Action Row (Pushed to bottom) */}
-        <div className="mt-auto flex items-end justify-between pt-4 border-t border-slate-100 dark:border-dark-border/50">
+        <div className="mt-auto flex items-end justify-between border-t border-slate-100 pt-4 dark:border-dark-border/50">
           <div className="flex flex-col">
-            <span className="text-sm text-slate-400 line-through mb-0.5">{formatPrice(product.price * 1.2)}</span>
+            <span className="mb-0.5 text-sm text-slate-400 line-through">{formatPrice(product.price * 1.2)}</span>
             <span className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
               {formatPrice(product.price)}
             </span>
@@ -92,7 +93,7 @@ const ProductCard = ({ product }) => {
           <button 
             onClick={handleAddToCart}
             disabled={product.countInStock === 0}
-            className="flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 text-slate-600 hover:bg-primary-600 hover:text-white dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-primary-600 dark:hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-slate-400 shadow-sm hover:shadow-primary-600/30 group/btn"
+            className="group/btn flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-600 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-600 hover:bg-primary-600 hover:text-white hover:shadow-primary-600/30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-slate-100 disabled:hover:text-slate-400 dark:border-dark-border dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-primary-600 dark:hover:text-white"
             aria-label="Add to Cart"
           >
             <ShoppingCart size={20} className="group-hover/btn:scale-110 transition-transform" />

@@ -68,7 +68,7 @@ const ProductDetails = () => {
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-dark-bg min-h-screen pt-24 pb-16">
+    <div className="min-h-screen bg-transparent pb-16">
       <div className="container-bound">
         
         {/* Breadcrumbs */}
@@ -101,7 +101,7 @@ const ProductDetails = () => {
             transition={{ duration: 0.5 }}
             className="lg:col-span-6 xl:col-span-6 flex flex-col gap-4"
           >
-            <div className="relative aspect-[4/5] rounded-3xl overflow-hidden bg-white dark:bg-dark-card border border-slate-100 dark:border-dark-border shadow-sm group">
+            <div className="panel-premium group relative aspect-[4/5] overflow-hidden p-0">
               <AnimatePresence mode="wait">
                 <motion.img 
                   key={activeImage}
@@ -186,7 +186,7 @@ const ProductDetails = () => {
             </div>
 
             {/* Purchase Action Box */}
-            <div className="bg-white dark:bg-dark-card rounded-3xl p-6 md:p-8 mb-8 border border-slate-100 dark:border-dark-border shadow-md">
+            <div className="panel-premium mb-8 p-6 md:p-8">
               <div className="flex justify-between items-center mb-6">
                 <span className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-sm">Availability</span>
                 {product.countInStock > 0 ? (
@@ -263,7 +263,7 @@ const ProductDetails = () => {
             </div>
 
             {/* Product Tabs */}
-            <div className="border border-slate-200 dark:border-dark-border rounded-3xl overflow-hidden bg-white dark:bg-dark-card shadow-sm">
+            <div className="table-shell overflow-hidden">
               <div className="flex border-b border-slate-200 dark:border-dark-border overflow-x-auto hide-scrollbar">
                 {['description', 'specifications', 'reviews'].map(tab => (
                   <button 

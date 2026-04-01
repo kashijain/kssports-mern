@@ -270,7 +270,7 @@ const OfflineSalesSection = () => {
     <div className="space-y-8">
       <section
         ref={formRef}
-        className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border p-6 md:p-8 space-y-6"
+        className="panel-premium p-6 md:p-8 space-y-6"
       >
         <div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Upload Offline Sales Sheet</h3>
@@ -342,7 +342,7 @@ const OfflineSalesSection = () => {
         )}
       </section>
 
-      <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border p-6 md:p-8 space-y-6">
+      <section className="panel-premium p-6 md:p-8 space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Offline Sales</h3>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
@@ -540,7 +540,7 @@ const OfflineSalesSection = () => {
         </form>
       </section>
 
-      <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border p-6 md:p-8 space-y-6">
+      <section className="panel-premium p-6 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Filters and Summary</h3>
@@ -626,7 +626,7 @@ const OfflineSalesSection = () => {
           ].map(([label, value]) => (
             <div
               key={label}
-              className="bg-slate-50 dark:bg-dark-bg border border-slate-200 dark:border-dark-border rounded-2xl p-5"
+              className="metric-card rounded-2xl p-5"
             >
               <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p>
               <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">{value}</p>
@@ -635,12 +635,12 @@ const OfflineSalesSection = () => {
         </div>
       </section>
 
-      <section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+      <section className="table-shell">
         <div className="p-6 md:p-8 border-b border-slate-100 dark:border-dark-border">
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Offline Sales Entries</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="table-premium">
             <thead>
               <tr className="bg-slate-50/80 dark:bg-dark-bg/80 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest">
                 <th className="px-6 py-5 border-b">Date</th>
