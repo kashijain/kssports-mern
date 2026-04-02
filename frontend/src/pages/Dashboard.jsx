@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { BarChart3, Bell, CheckCircle2, ChevronDown, ChevronRight, Clock, Edit, FileSpreadsheet, HelpCircle, ImagePlus, LayoutDashboard, LogOut, Menu, Package, Plus, ReceiptIndianRupee, Search, Settings, ShoppingBag, Sparkles, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
+import { BarChart3, Bell, CheckCircle2, ChevronDown, ChevronRight, Clock, Edit, FileSpreadsheet, HelpCircle, ImagePlus, LogOut, Menu, Package, Plus, ReceiptIndianRupee, Search, Settings, ShoppingBag, Sparkles, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useAuthStore, useOrderStore, useProductStore } from '../store/useStore';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
@@ -572,7 +572,6 @@ const Dashboard=()=>{
   };
 
   const sidebar=isSeller?[
-    ['overview','/admin',LayoutDashboard,'Dashboard'],
     ['inventory','/admin/manage-products',Package,'Inventory'],
     ['offline-sales','/admin/offline-sales',ReceiptIndianRupee,'Offline Sales'],
     ['business-summary','/admin/business-summary',BarChart3,'Summary'],

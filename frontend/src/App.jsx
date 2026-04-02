@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
@@ -67,7 +67,7 @@ const App = () => {
             </Route>
 
             <Route element={<ProtectedRoute sellerOnly />}>
-              <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin" element={<Navigate to="/admin/offline-sales" replace />} />
               <Route path="/admin/business-summary" element={<Dashboard />} />
               <Route path="/admin/add-product" element={<Dashboard />} />
               <Route path="/admin/manage-products" element={<Dashboard />} />
