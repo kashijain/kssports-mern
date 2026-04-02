@@ -311,7 +311,7 @@ export const getProductById = async (req, res) => {
 };
 
 export const createProduct = async (req, res) => {
-  const { name, price, brand, category, countInStock, description, codAvailable } = req.body;
+  const { name, price, costPrice, brand, category, countInStock, description, codAvailable } = req.body;
 
   if (!name || !price || !brand || !category || !description) {
     res.status(400);
@@ -331,6 +331,7 @@ export const createProduct = async (req, res) => {
   const product = await Product.create({
     name: name.trim(),
     price: Number(price),
+    costPrice: costPrice !== undefined ? Number(costPrice) : 0,
     user: req.user._id,
     image: images[0] || DEFAULT_PRODUCT_IMAGE,
     images,
@@ -369,6 +370,8 @@ export const updateProduct = async (req, res) => {
   product.name = req.body.name?.trim() || product.name;
   product.price =
     req.body.price !== undefined ? Number(req.body.price) : product.price;
+  product.costPrice =
+    req.body.costPrice !== undefined ? Number(req.body.costPrice) : product.costPrice;
   product.description = req.body.description?.trim() || product.description;
   product.brand = req.body.brand?.trim() || product.brand;
   product.category = req.body.category?.trim() || product.category;

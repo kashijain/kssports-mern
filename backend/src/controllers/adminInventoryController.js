@@ -772,7 +772,7 @@ export const uploadStockSheet = async (req, res) => {
 
     if (existingProduct) {
       existingProduct.countInStock = stock;
-
+      existingProduct.costPrice = costPrice;
       existingProduct.price = salePrice;
       if (category) {
         existingProduct.category = category;
@@ -804,6 +804,7 @@ export const uploadStockSheet = async (req, res) => {
       category,
       description: 'Added from stock sheet import',
       features: [],
+      costPrice,
       price: salePrice,
       countInStock: stock,
       codAvailable: true,
