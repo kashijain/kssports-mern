@@ -15,6 +15,11 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/price';
+import StockInwardBill from './StockInwardBill';
+import {
+  buildStockInwardBillHtml,
+  formatStockInwardBillDate,
+} from './stockInwardBillUtils';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -44,149 +49,12 @@ const createEmptyForm = () => ({
 
 const paymentStatuses = ['Paid', 'Pending', 'Partial'];
 
-const formatDate = (value) => {
-  if (!value) {
-    return '-';
-  }
-
-  return new Intl.DateTimeFormat('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value));
-};
-
 const formatDateForInput = (value) => {
   if (!value) {
     return getToday();
   }
 
   return new Date(value).toISOString().slice(0, 10);
-};
-
-const createBillMarkup = (entry) => {
-  const extraCharges = [
-    ['Transport Charges', entry.transportCharges],
-    ['Rent Charges', entry.rentCharges],
-    ['Loading Charges', entry.loadingCharges],
-    ['Other Charges', entry.otherCharges],
-  ];
-
-  const chargeRows = extraCharges
-    .map(
-      ([label, value]) => `
-        <tr>
-          <td style="padding:10px 0;color:#475569;">${label}</td>
-          <td style="padding:10px 0;text-align:right;font-weight:700;color:#0f172a;">${formatPrice(value)}</td>
-        </tr>
-      `
-    )
-    .join('');
-
-  return `<!doctype html>
-  <html>
-    <head>
-      <meta charset="utf-8" />
-      <title>K.S. Sports Bill - ${entry.billNumber || entry._id}</title>
-      <style>
-        body{margin:0;padding:32px;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif;}
-        .sheet{max-width:860px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:32px;box-shadow:0 20px 60px rgba(15,23,42,.08);}
-        .row{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;}
-        .brand{font-size:32px;font-weight:800;color:#991b1b;letter-spacing:.04em;}
-        .label{font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.12em;}
-        .value{margin-top:6px;font-size:15px;font-weight:700;color:#0f172a;}
-        .card{border:1px solid #e2e8f0;border-radius:18px;padding:18px 20px;background:#fff;}
-        table{width:100%;border-collapse:collapse;margin-top:24px;}
-        thead th{padding:14px 0;border-bottom:1px solid #e2e8f0;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#64748b;text-align:left;}
-        tbody td{padding:16px 0;border-bottom:1px solid #e2e8f0;}
-        .footer-note{margin-top:28px;padding:18px 20px;border-radius:18px;background:#f8fafc;border:1px solid #e2e8f0;}
-        @media print{
-          body{background:#fff;padding:0;}
-          .sheet{box-shadow:none;border:none;border-radius:0;max-width:none;}
-        }
-      </style>
-    </head>
-    <body>
-      <div class="sheet">
-        <div class="row" style="align-items:flex-start;">
-          <div>
-            <div class="label">Purchase Bill</div>
-            <div class="brand">K.S. Sports</div>
-            <div style="margin-top:10px;color:#475569;">Stock Inward / Purchase Entry</div>
-          </div>
-          <div class="card" style="min-width:220px;">
-            <div class="label">Bill Number</div>
-            <div class="value">${entry.billNumber || '-'}</div>
-            <div class="label" style="margin-top:16px;">Date</div>
-            <div class="value">${formatDate(entry.date)}</div>
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:24px;">
-          <div class="card" style="flex:1;min-width:260px;">
-            <div class="label">Supplier Name</div>
-            <div class="value">${entry.supplierName || '-'}</div>
-            <div class="label" style="margin-top:16px;">Supplier Phone</div>
-            <div class="value">${entry.supplierPhone || '-'}</div>
-          </div>
-          <div class="card" style="flex:1;min-width:260px;">
-            <div class="label">Product Name</div>
-            <div class="value">${entry.product?.name || entry.productName || '-'}</div>
-            <div class="label" style="margin-top:16px;">Payment Status</div>
-            <div class="value">${entry.paymentStatus}</div>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th style="text-align:right;">Quantity</th>
-              <th style="text-align:right;">Rate</th>
-              <th style="text-align:right;">Total Cost</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="font-weight:700;">${entry.product?.name || entry.productName || '-'}</td>
-              <td style="text-align:right;font-weight:700;">${entry.quantity}</td>
-              <td style="text-align:right;font-weight:700;">${formatPrice(entry.costPrice)}</td>
-              <td style="text-align:right;font-weight:800;">${formatPrice(entry.totalCost)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Extra Charges</th>
-              <th style="text-align:right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${chargeRows}
-            <tr>
-              <td style="padding:14px 0;font-weight:800;color:#0f172a;">Final Total Cost</td>
-              <td style="padding:14px 0;text-align:right;font-weight:900;color:#991b1b;">${formatPrice(entry.finalTotalCost)}</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 0;color:#475569;">Paid Amount</td>
-              <td style="padding:10px 0;text-align:right;font-weight:700;color:#0f172a;">${formatPrice(entry.paidAmount)}</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 0;color:#475569;">Pending Amount</td>
-              <td style="padding:10px 0;text-align:right;font-weight:700;color:#0f172a;">${formatPrice(entry.pendingAmount)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="footer-note">
-          <div class="label">Notes</div>
-          <div class="value" style="font-size:14px;font-weight:600;">${entry.notes || 'No additional notes'}</div>
-        </div>
-      </div>
-    </body>
-  </html>`;
 };
 
 const openBillWindow = (entry, { autoPrint = false } = {}) => {
@@ -198,7 +66,7 @@ const openBillWindow = (entry, { autoPrint = false } = {}) => {
   }
 
   popup.document.open();
-  popup.document.write(createBillMarkup(entry));
+  popup.document.write(buildStockInwardBillHtml(entry));
   popup.document.close();
   popup.focus();
 
@@ -684,7 +552,7 @@ const StockInwardSection = () => {
 
               {entries.map((entry) => (
                 <tr key={entry._id} className="transition-colors hover:bg-white/[0.03]">
-                  <td className="px-6 py-5 text-sm text-slate-300">{formatDate(entry.date)}</td>
+                  <td className="px-6 py-5 text-sm text-slate-300">{formatStockInwardBillDate(entry.date)}</td>
                   <td className="px-6 py-5">
                     <p className="font-bold text-white">{entry.supplierName}</p>
                     <p className="mt-1 text-xs text-slate-500">{entry.supplierPhone || 'No phone added'}</p>
@@ -776,55 +644,12 @@ const StockInwardSection = () => {
                     <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill Number</p>
                     <p className="mt-2 text-lg font-black text-white">{activeBill.billNumber || '-'}</p>
                     <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-300">{formatDate(activeBill.date)}</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-300">{formatStockInwardBillDate(activeBill.date)}</p>
                   </div>
                 </div>
 
-                <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier</p>
-                    <p className="mt-3 text-xl font-black text-white">{activeBill.supplierName}</p>
-                    <p className="mt-2 text-sm text-slate-400">{activeBill.supplierPhone || 'No phone added'}</p>
-                  </div>
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</p>
-                    <p className="mt-3 text-xl font-black text-white">{activeBill.product?.name || '-'}</p>
-                    <p className="mt-2 text-sm text-slate-400">Quantity {activeBill.quantity} at {formatPrice(activeBill.costPrice)} each</p>
-                  </div>
-                </div>
-
-                <div className="mt-8 overflow-hidden rounded-[1.5rem] border border-white/10">
-                  <table className="min-w-full text-left">
-                    <thead>
-                      <tr className="bg-white/[0.03] text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">
-                        <th className="px-5 py-4">Field</th>
-                        <th className="px-5 py-4 text-right">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {[
-                        ['Total Cost', formatPrice(activeBill.totalCost)],
-                        ['Transport Charges', formatPrice(activeBill.transportCharges)],
-                        ['Rent Charges', formatPrice(activeBill.rentCharges)],
-                        ['Loading Charges', formatPrice(activeBill.loadingCharges)],
-                        ['Other Charges', formatPrice(activeBill.otherCharges)],
-                        ['Final Total Cost', formatPrice(activeBill.finalTotalCost)],
-                        ['Payment Status', activeBill.paymentStatus],
-                        ['Paid Amount', formatPrice(activeBill.paidAmount)],
-                        ['Pending Amount', formatPrice(activeBill.pendingAmount)],
-                      ].map(([label, value]) => (
-                        <tr key={label}>
-                          <td className="px-5 py-4 text-sm font-semibold text-slate-300">{label}</td>
-                          <td className="px-5 py-4 text-right text-sm font-black text-white">{value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</p>
-                  <p className="mt-3 text-sm leading-7 text-slate-300">{activeBill.notes || 'No additional notes'}</p>
+                <div className="mt-8">
+                  <StockInwardBill entry={activeBill} />
                 </div>
               </div>
             </div>
