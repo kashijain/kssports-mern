@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import {
+  CalendarDays,
+  ChartColumn,
+  CircleDollarSign,
+  Clock3,
+  FileUp,
+  Filter,
+  Package,
+  Pencil,
+  Trash2,
+  Wallet,
+} from 'lucide-react';
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/price';
 
@@ -63,6 +75,22 @@ const OfflineSalesSection = () => {
     const value = Number(form.pendingAmount);
     return Number.isFinite(value) && value >= 0 ? value : 0;
   }, [form.paymentMode, form.pendingAmount]);
+  const pendingBalance = useMemo(
+    () => sales.reduce((sum, sale) => sum + (Number(sale.pendingAmount) || 0), 0),
+    [sales]
+  );
+  const todayRevenue = useMemo(() => {
+    const today = getToday();
+    return sales.reduce(
+      (sum, sale) =>
+        sale.saleDate?.slice(0, 10) === today ? sum + (Number(sale.totalSale) || 0) : sum,
+      0
+    );
+  }, [sales]);
+  const todaySalesCount = useMemo(() => {
+    const today = getToday();
+    return sales.filter((sale) => sale.saleDate?.slice(0, 10) === today).length;
+  }, [sales]);
 
   const resetForm = () => {
     setEditingSaleId('');
@@ -258,27 +286,94 @@ const OfflineSalesSection = () => {
 
   return (
     <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+        <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.18),transparent_52%)]"></div>
+        <div className="relative space-y-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary-300">K.S. Sports Sales Console</p>
+              <h2 className="mt-3 text-3xl font-black uppercase tracking-tight text-white md:text-4xl">Offline Sales Tracker</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+                Monitor premium counter sales, protect margin visibility, and keep pending collections clearly tracked in one place.
+              </p>
+            </div>
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Today's Tracking</p>
+              <p className="mt-2 text-xl font-black text-white">{todaySalesCount} entries</p>
+              <p className="mt-1 text-sm text-slate-400">{formatPrice(todayRevenue)} booked today</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                label: "Today's Revenue",
+                value: formatPrice(todayRevenue),
+                note: `${todaySalesCount} sales today`,
+                icon: CircleDollarSign,
+                tone: 'text-emerald-300 bg-emerald-500/15',
+              },
+              {
+                label: 'Total Units Sold',
+                value: summary.totalQuantitySold || 0,
+                note: `${sales.length} records in current view`,
+                icon: Package,
+                tone: 'text-sky-300 bg-sky-500/15',
+              },
+              {
+                label: 'Total Profit',
+                value: formatPrice(summary.totalProfit || 0),
+                note: 'Based on current filtered sales',
+                icon: ChartColumn,
+                tone: 'text-primary-300 bg-primary-500/15',
+              },
+              {
+                label: 'Pending Balance',
+                value: formatPrice(pendingBalance),
+                note: `${sales.filter((sale) => Number(sale.pendingAmount) > 0).length} pending entries`,
+                icon: Wallet,
+                tone: 'text-amber-300 bg-amber-500/15',
+              },
+            ].map((card) => {
+              const Icon = card.icon;
+              return (
+                <div key={card.label} className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]">
+                  <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div>
+                  <div className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${card.tone}`}>
+                    <Icon size={20} />
+                  </div>
+                  <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">{card.label}</p>
+                  <p className="mt-3 text-3xl font-black tracking-tight text-white">{card.value}</p>
+                  <p className="mt-2 text-sm text-slate-400">{card.note}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       <section
         ref={formRef}
-        className="panel-premium p-6 md:p-8 space-y-6"
+        className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8"
       >
         <div>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Upload Offline Sales Sheet</h3>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Import Sheet</p>
+          <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Upload Offline Sales Sheet</h3>
+          <p className="mt-2 text-sm text-slate-400">
             Upload .xlsx or .csv with columns: Date, Product Name, Quantity Sold, Sale Price Per Item, Cost Price Per Item, Payment Mode, Notes
           </p>
         </div>
 
         <form onSubmit={handleSheetUpload} className="space-y-5">
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Offline Sales Sheet</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Offline Sales Sheet</label>
             <input
               type="file"
               accept=".xlsx,.csv"
               onChange={(event) => setSheetFile(event.target.files?.[0] || null)}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none file:mr-4 file:rounded-xl file:border-0 file:bg-primary-600 file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-[0.16em] file:text-white"
             />
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500">
               Example row: 2026-03-31, KC Bat, 2, 1200, 900, Cash, Counter sale
             </p>
           </div>
@@ -287,17 +382,18 @@ const OfflineSalesSection = () => {
             <button
               type="submit"
               disabled={uploadingSheet}
-              className="btn-primary px-8 shadow-lg shadow-primary-600/20 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-white transition-all hover:border-white/20 hover:bg-white/[0.06] disabled:opacity-60"
             >
-              {uploadingSheet ? 'Uploading...' : 'Upload'}
+              <FileUp size={16} />
+              {uploadingSheet ? 'Uploading...' : 'Upload Sheet'}
             </button>
           </div>
         </form>
 
         {sheetResult && (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 dark:bg-emerald-900/10 dark:border-emerald-900/30 px-4 py-3">
-              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{sheetResult.message}</p>
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+              <p className="text-sm font-semibold text-emerald-300">{sheetResult.message}</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -308,20 +404,20 @@ const OfflineSalesSection = () => {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="bg-slate-50 dark:bg-dark-bg border border-slate-200 dark:border-dark-border rounded-2xl p-4"
+                  className="rounded-[1.3rem] border border-white/10 bg-[#151b24] p-4"
                 >
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p>
-                  <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">{value}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{label}</p>
+                  <p className="mt-3 text-2xl font-black text-white">{value}</p>
                 </div>
               ))}
             </div>
 
             {Array.isArray(sheetResult.errors) && sheetResult.errors.length > 0 && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/70 dark:bg-amber-900/10 dark:border-amber-900/30 p-4">
-                <p className="text-sm font-bold text-amber-700 dark:text-amber-300 mb-3">Skipped Rows</p>
+              <div className="rounded-[1.3rem] border border-amber-500/20 bg-amber-500/10 p-4">
+                <p className="mb-3 text-sm font-bold text-amber-300">Skipped Rows</p>
                 <div className="space-y-2">
                   {sheetResult.errors.map((item) => (
-                    <p key={item} className="text-sm text-amber-700 dark:text-amber-200">
+                    <p key={item} className="text-sm text-amber-200">
                       {item}
                     </p>
                   ))}
@@ -332,32 +428,33 @@ const OfflineSalesSection = () => {
         )}
       </section>
 
-      <section className="panel-premium p-6 md:p-8 space-y-6">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
         <div>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Offline Sales</h3>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">{editingSaleId ? 'Edit Entry' : 'Record New Sale'}</p>
+          <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Offline Sales Entry Panel</h3>
+          <p className="mt-2 text-sm text-slate-400">
             Record date-wise offline sales without affecting the online payment flow.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Date</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</label>
             <input
               type="date"
               value={form.saleDate}
               onChange={(event) => setForm((current) => ({ ...current, saleDate: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Product Name</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label>
             <select
               value={form.productId}
               onChange={(event) => handleProductChange(event.target.value)}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
               required
             >
               <option value="" disabled>Select Product</option>
@@ -370,80 +467,80 @@ const OfflineSalesSection = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Quantity Sold</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Quantity Sold</label>
             <input
               type="number"
               min="1"
               value={form.quantitySold}
               onChange={(event) => setForm((current) => ({ ...current, quantitySold: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Sale Price Per Item</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Sale Price Per Item</label>
             <input
               type="number"
               min="0"
               step="0.01"
               value={form.salePricePerItem}
               onChange={(event) => setForm((current) => ({ ...current, salePricePerItem: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Sale</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Total Sale</label>
             <input
               type="text"
               value={formatPrice(totalSale)}
               readOnly
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Cost Price Per Item</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Cost Price Per Item</label>
             <input
               type="number"
               min="0"
               step="0.01"
               value={form.costPricePerItem}
               onChange={(event) => setForm((current) => ({ ...current, costPricePerItem: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
               placeholder={selectedProduct ? 'Enter cost price' : ''}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Cost</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Total Cost</label>
             <input
               type="text"
               value={formatPrice(totalCost)}
               readOnly
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Profit</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Profit</label>
             <input
               type="text"
               value={formatPrice(profit)}
               readOnly
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-emerald-300 outline-none"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Payment Mode</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Mode</label>
             <select
               value={form.paymentMode}
               onChange={(event) => setForm((current) => ({ ...current, paymentMode: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
               required
             >
               {paymentModes.map((mode) => (
@@ -456,48 +553,52 @@ const OfflineSalesSection = () => {
 
           {form.paymentMode === 'Pending' ? (
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Pending Amount</label>
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</label>
               <input
                 type="number"
                 min="0.01"
                 step="0.01"
                 value={form.pendingAmount}
                 onChange={(event) => setForm((current) => ({ ...current, pendingAmount: event.target.value }))}
-                className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+                className="h-12 w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 text-sm text-white outline-none transition-all focus:border-amber-400/50"
                 required
               />
             </div>
           ) : (
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Pending Amount</label>
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</label>
               <input
                 type="text"
                 value={formatPrice(0)}
                 readOnly
-                className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+                className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-400 outline-none"
               />
             </div>
           )}
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Customer Name</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Customer Name {form.paymentMode === 'Pending' ? <span className="text-primary-300">(Required)</span> : null}</label>
             <input
               type="text"
               value={form.customerName}
               onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className={`h-12 w-full rounded-2xl border px-4 text-sm text-white outline-none transition-all ${
+                form.paymentMode === 'Pending'
+                  ? 'border-primary-500/30 bg-primary-500/10 focus:border-primary-500/50'
+                  : 'border-white/10 bg-white/[0.04] focus:border-primary-500/40'
+              }`}
               placeholder={form.paymentMode === 'Pending' ? 'Required for pending payment' : 'Optional'}
               required={form.paymentMode === 'Pending'}
             />
           </div>
 
           <div className="space-y-2 md:col-span-2 xl:col-span-3">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Notes</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</label>
             <textarea
               rows="3"
               value={form.notes}
               onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"
               placeholder="Optional notes"
             />
           </div>
@@ -507,7 +608,7 @@ const OfflineSalesSection = () => {
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-dark-bg"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]"
               >
                 Cancel
               </button>
@@ -515,7 +616,7 @@ const OfflineSalesSection = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="btn-primary px-8 shadow-lg shadow-primary-600/20 disabled:opacity-60"
+              className="rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60"
             >
               {submitting ? 'Saving...' : editingSaleId ? 'Update Offline Sale' : 'Save Offline Sale'}
             </button>
@@ -523,11 +624,12 @@ const OfflineSalesSection = () => {
         </form>
       </section>
 
-      <section className="panel-premium p-6 md:p-8 space-y-6">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Filters and Summary</h3>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Sales History Log</p>
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Filters and Summary</h3>
+            <p className="mt-2 text-sm text-slate-400">
               Filter by single date, month, or custom range.
             </p>
           </div>
@@ -535,15 +637,17 @@ const OfflineSalesSection = () => {
             <button
               type="button"
               onClick={applyFilters}
-              className="px-5 py-3 rounded-xl font-bold text-sm text-white bg-primary-600 hover:bg-primary-700"
+              className="inline-flex items-center gap-2 rounded-2xl bg-primary-600 px-5 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_40px_-22px_rgba(220,38,38,0.75)] transition-all hover:bg-primary-700"
             >
+              <Filter size={16} />
               Apply Filters
             </button>
             <button
               type="button"
               onClick={clearFilters}
-              className="px-5 py-3 rounded-xl font-bold text-sm border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg"
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"
             >
+              <Download size={16} />
               Clear
             </button>
           </div>
@@ -551,16 +655,16 @@ const OfflineSalesSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Single Date</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Single Date</label>
             <input
               type="date"
               value={filters.date}
               onChange={(event) => setFilters((current) => ({ ...current, date: event.target.value, month: '' }))}
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Month</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Month</label>
             <input
               type="month"
               value={filters.month}
@@ -573,29 +677,29 @@ const OfflineSalesSection = () => {
                   to: '',
                 }))
               }
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">From</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">From</label>
             <input
               type="date"
               value={filters.from}
               onChange={(event) =>
                 setFilters((current) => ({ ...current, date: '', month: '', from: event.target.value }))
               }
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">To</label>
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">To</label>
             <input
               type="date"
               value={filters.to}
               onChange={(event) =>
                 setFilters((current) => ({ ...current, date: '', month: '', to: event.target.value }))
               }
-              className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
             />
           </div>
         </div>
@@ -609,38 +713,44 @@ const OfflineSalesSection = () => {
           ].map(([label, value]) => (
             <div
               key={label}
-              className="metric-card rounded-2xl p-5"
+              className="rounded-[1.5rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]"
             >
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p>
-              <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">{value}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{label}</p>
+              <p className="mt-3 text-2xl font-black text-white">{value}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="table-shell">
-        <div className="p-6 md:p-8 border-b border-slate-100 dark:border-dark-border">
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Offline Sales Entries</h3>
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+        <div className="flex flex-col gap-4 border-b border-white/10 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Sales History Log</p>
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Offline Sales Entries</h3>
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+            {sales.length} visible entries
+          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="table-premium">
+          <table className="min-w-full text-left">
             <thead>
-              <tr className="bg-slate-50/80 dark:bg-dark-bg/80 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest">
-                <th className="px-6 py-5 border-b">Date</th>
-                <th className="px-6 py-5 border-b">Product</th>
-                <th className="px-6 py-5 border-b text-center">Qty</th>
-                <th className="px-6 py-5 border-b text-center">Total Sale</th>
-                <th className="px-6 py-5 border-b text-center">Total Profit</th>
-                <th className="px-6 py-5 border-b text-center">Payment</th>
-                <th className="px-6 py-5 border-b text-center">Pending Amount</th>
-                <th className="px-6 py-5 border-b">Customer Name</th>
-                <th className="px-6 py-5 border-b text-right">Actions</th>
+              <tr className="bg-white/[0.02] text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">
+                <th className="px-6 py-5">Date</th>
+                <th className="px-6 py-5">Product</th>
+                <th className="px-6 py-5 text-center">Qty</th>
+                <th className="px-6 py-5 text-center">Total Sale</th>
+                <th className="px-6 py-5 text-center">Total Profit</th>
+                <th className="px-6 py-5 text-center">Payment</th>
+                <th className="px-6 py-5 text-center">Pending Amount</th>
+                <th className="px-6 py-5">Customer Name</th>
+                <th className="px-6 py-5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
+            <tbody className="divide-y divide-white/5">
               {!loadingSales && sales.length === 0 && (
                 <tr>
-                  <td colSpan="9" className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan="9" className="px-6 py-12 text-center text-sm text-slate-500">
                     No offline sales found for the selected filter.
                   </td>
                 </tr>
@@ -648,48 +758,49 @@ const OfflineSalesSection = () => {
               {sales.map((sale) => (
                 <tr
                   key={sale._id}
-                  className={`hover:bg-slate-50/60 dark:hover:bg-dark-bg/50 ${
-                    sale.paymentMode === 'Pending'
-                      ? 'bg-amber-50/60 dark:bg-amber-900/10'
-                      : ''
-                  }`}
+                  className={`transition-colors hover:bg-white/[0.03] ${sale.paymentMode === 'Pending' ? 'bg-amber-500/[0.06]' : ''}`}
                 >
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                  <td className="px-6 py-5 text-sm text-slate-300">
                     {sale.saleDate?.slice(0, 10)}
                   </td>
-                  <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{sale.productName}</td>
-                  <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300">{sale.quantitySold}</td>
-                  <td className="px-6 py-4 text-center font-semibold text-slate-900 dark:text-white">{formatPrice(sale.totalSale)}</td>
-                  <td className="px-6 py-4 text-center font-semibold text-emerald-700 dark:text-emerald-300">{formatPrice(sale.profit)}</td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-5">
+                    <p className="font-bold text-white">{sale.productName}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{sale.notes || 'Offline sale'}</p>
+                  </td>
+                  <td className="px-6 py-5 text-center text-sm font-semibold text-slate-300">{sale.quantitySold}</td>
+                  <td className="px-6 py-5 text-center text-sm font-bold text-white">{formatPrice(sale.totalSale)}</td>
+                  <td className="px-6 py-5 text-center text-sm font-bold text-emerald-300">{formatPrice(sale.profit)}</td>
+                  <td className="px-6 py-5 text-center">
                     <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                      className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] ${
                         sale.paymentMode === 'Pending'
-                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                          ? 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                          : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
                       }`}
                     >
                       {sale.paymentMode}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center font-semibold text-amber-700 dark:text-amber-300">
+                  <td className={`px-6 py-5 text-center text-sm font-bold ${sale.pendingAmount > 0 ? 'text-amber-300' : 'text-slate-400'}`}>
                     {sale.pendingAmount > 0 ? formatPrice(sale.pendingAmount) : formatPrice(0)}
                   </td>
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{sale.customerName || '-'}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-5 text-sm text-slate-300">{sale.customerName || '-'}</td>
+                  <td className="px-6 py-5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => handleEdit(sale)}
-                        className="px-4 py-2 rounded-xl border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"
                       >
+                        <Pencil size={14} />
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(sale._id)}
-                        className="px-4 py-2 rounded-xl border border-slate-200 dark:border-dark-border text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-red-300 transition-all hover:bg-red-500/15"
                       >
+                        <Trash2 size={14} />
                         Delete
                       </button>
                     </div>
@@ -698,6 +809,30 @@ const OfflineSalesSection = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-primary-500/20 bg-gradient-to-r from-primary-600/10 via-[#151b24] to-[#151b24] p-6 shadow-[0_26px_70px_-42px_rgba(0,0,0,0.95)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-[0_18px_38px_-20px_rgba(220,38,38,0.8)]">
+              <Clock3 size={22} />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Recovery Insight</p>
+              <h4 className="mt-2 text-2xl font-black tracking-tight text-white">Pending collection watch</h4>
+              <p className="mt-2 text-sm text-slate-400">
+                Current pending balance stands at {formatPrice(pendingBalance)} across {sales.filter((sale) => Number(sale.pendingAmount) > 0).length} entries.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={applyFilters}
+            className="rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white transition-all hover:border-white/20 hover:bg-white/[0.09]"
+          >
+            Refresh Insight
+          </button>
         </div>
       </section>
     </div>
