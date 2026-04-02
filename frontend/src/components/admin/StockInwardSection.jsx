@@ -133,8 +133,10 @@ const StockInwardSection = () => {
   const loadingCharges = Number(form.loadingCharges) || 0;
   const otherCharges = Number(form.otherCharges) || 0;
   const totalCost = quantity * costPrice;
+  const extraChargesTotal =
+    transportCharges + rentCharges + loadingCharges + otherCharges;
   const finalTotalCost =
-    totalCost + transportCharges + rentCharges + loadingCharges + otherCharges;
+    totalCost + extraChargesTotal;
 
   const paidAmount = useMemo(() => {
     if (form.paymentStatus === 'Paid') {
@@ -376,173 +378,112 @@ const StockInwardSection = () => {
             </p>
           </div>
           {editingId && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"
-            >
+            <button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
               <X size={16} />
               Cancel Edit
             </button>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-8">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</label>
-              <input type="date" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required />
-            </div>
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#151b24] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</p><p className="mt-3 text-3xl font-black text-white">{formatPrice(totalCost)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">{quantity} x {formatPrice(costPrice)}</p></div>
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#151b24] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Extra Charges</p><p className="mt-3 text-3xl font-black text-white">{formatPrice(extraChargesTotal)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">Transport, rent, loading, other</p></div>
+          <div className="rounded-[1.5rem] border border-amber-500/25 bg-amber-500/10 p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200">Final Total</p><p className="mt-3 text-3xl font-black text-amber-100">{formatPrice(finalTotalCost)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-amber-300/80">Base cost + charges</p></div>
+          <div className="rounded-[1.5rem] border border-emerald-500/25 bg-emerald-500/10 p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-200">Paid Amount</p><p className="mt-3 text-3xl font-black text-emerald-100">{formatPrice(paidAmount)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-emerald-300/80">{form.paymentStatus} payment plan</p></div>
+          <div className="rounded-[1.5rem] border border-red-500/25 bg-red-500/10 p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-red-200">Pending Amount</p><p className="mt-3 text-3xl font-black text-red-100">{formatPrice(pendingAmount)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-red-300/80">Outstanding balance</p></div>
+        </div>
 
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier / Wholesaler Name</label>
-              <input type="text" value={form.supplierName} onChange={(event) => setForm((current) => ({ ...current, supplierName: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Enter supplier name" required />
-            </div>
+        <form onSubmit={handleSubmit} className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_380px]">
+          <div className="space-y-6">
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Supplier Details</p>
+                  <h4 className="mt-2 text-xl font-black text-white">Vendor and document basics</h4>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</label><input type="date" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill Number</label><input type="text" value={form.billNumber} onChange={(event) => setForm((current) => ({ ...current, billNumber: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Bill / invoice number" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier / Wholesaler Name</label><input type="text" value={form.supplierName} onChange={(event) => setForm((current) => ({ ...current, supplierName: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Enter supplier name" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier Phone</label><input type="text" value={form.supplierPhone} onChange={(event) => setForm((current) => ({ ...current, supplierPhone: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Phone number" /></div>
+              </div>
+            </section>
 
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier Phone</label>
-              <input type="text" value={form.supplierPhone} onChange={(event) => setForm((current) => ({ ...current, supplierPhone: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Phone number" />
-            </div>
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Product Details</p>
+                  <h4 className="mt-2 text-xl font-black text-white">Inventory selection and base pricing</h4>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                  Stock after save: {(selectedProduct?.countInStock || 0) + quantity}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label><select value={form.product} onChange={(event) => handleProductChange(event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required><option value="" disabled>Select product from inventory</option>{products.map((product) => (<option key={product._id} value={product._id}>{product.name}</option>))}</select></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Quantity Purchased</label><input type="number" min="1" value={form.quantity} onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Cost Price Per Item</label><input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => setForm((current) => ({ ...current, costPrice: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" placeholder="Purchase rate" required /></div>
+              </div>
+            </section>
 
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill Number</label>
-              <input type="text" value={form.billNumber} onChange={(event) => setForm((current) => ({ ...current, billNumber: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Bill / invoice number" />
-            </div>
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
+              <div className="mb-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Additional Charges</p>
+                <h4 className="mt-2 text-xl font-black text-white">Operational cost breakdown</h4>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Transport Charges</label><input type="number" min="0" step="0.01" value={form.transportCharges} onChange={(event) => setForm((current) => ({ ...current, transportCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Rent Charges</label><input type="number" min="0" step="0.01" value={form.rentCharges} onChange={(event) => setForm((current) => ({ ...current, rentCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Loading Charges</label><input type="number" min="0" step="0.01" value={form.loadingCharges} onChange={(event) => setForm((current) => ({ ...current, loadingCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Other Charges</label><input type="number" min="0" step="0.01" value={form.otherCharges} onChange={(event) => setForm((current) => ({ ...current, otherCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+              </div>
+            </section>
 
-            <div className="space-y-2 xl:col-span-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label>
-              <select value={form.product} onChange={(event) => handleProductChange(event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required>
-                <option value="" disabled>Select product from inventory</option>
-                {products.map((product) => (
-                  <option key={product._id} value={product._id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
+              <div className="mb-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Payment Summary</p>
+                <h4 className="mt-2 text-xl font-black text-white">Settlement and final review</h4>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Status</label><select value={form.paymentStatus} onChange={(event) => setForm((current) => ({ ...current, paymentStatus: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required>{paymentStatuses.map((status) => (<option key={status} value={status}>{status}</option>))}</select></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Paid Amount</label><input type="number" min="0" step="0.01" value={form.paymentStatus === 'Paid' ? String(finalTotalCost) : form.paymentStatus === 'Pending' ? '0' : form.paidAmount} onChange={(event) => setForm((current) => ({ ...current, paidAmount: event.target.value }))} readOnly={form.paymentStatus !== 'Partial'} className={`h-12 w-full rounded-2xl border px-4 text-sm outline-none transition-all ${form.paymentStatus === 'Partial' ? 'border-white/10 bg-white/[0.04] text-white focus:border-primary-500/40' : 'border-white/10 bg-white/[0.04] text-slate-400'}`} /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</label><input type="text" readOnly value={formatPrice(totalCost)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Final Total Cost</label><input type="text" readOnly value={formatPrice(finalTotalCost)} className="h-12 w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 text-sm font-semibold text-amber-100 outline-none" /></div>
+                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</label><input type="text" readOnly value={formatPrice(pendingAmount)} className="h-12 w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-semibold text-red-100 outline-none" /></div>
+                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</label><textarea rows="3" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Transport details, payment note, supplier reminder, or any internal note" /></div>
+              </div>
+            </section>
 
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Quantity Purchased</label>
-              <input type="number" min="1" value={form.quantity} onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Cost Price Per Item</label>
-              <input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => setForm((current) => ({ ...current, costPrice: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" placeholder="Purchase rate" required />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Total Cost</label>
-              <input type="text" readOnly value={formatPrice(totalCost)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none" />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Transport Charges</label>
-              <input type="number" min="0" step="0.01" value={form.transportCharges} onChange={(event) => setForm((current) => ({ ...current, transportCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Rent Charges</label>
-              <input type="number" min="0" step="0.01" value={form.rentCharges} onChange={(event) => setForm((current) => ({ ...current, rentCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Loading Charges</label>
-              <input type="number" min="0" step="0.01" value={form.loadingCharges} onChange={(event) => setForm((current) => ({ ...current, loadingCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Other Charges</label>
-              <input type="number" min="0" step="0.01" value={form.otherCharges} onChange={(event) => setForm((current) => ({ ...current, otherCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Final Total Cost</label>
-              <input type="text" readOnly value={formatPrice(finalTotalCost)} className="h-12 w-full rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 text-sm font-semibold text-white outline-none" />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Status</label>
-              <select value={form.paymentStatus} onChange={(event) => setForm((current) => ({ ...current, paymentStatus: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required>
-                {paymentStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Paid Amount</label>
-              <input type="number" min="0" step="0.01" value={form.paymentStatus === 'Paid' ? String(finalTotalCost) : form.paymentStatus === 'Pending' ? '0' : form.paidAmount} onChange={(event) => setForm((current) => ({ ...current, paidAmount: event.target.value }))} readOnly={form.paymentStatus !== 'Partial'} className={`h-12 w-full rounded-2xl border px-4 text-sm outline-none transition-all ${form.paymentStatus === 'Partial' ? 'border-white/10 bg-white/[0.04] text-white focus:border-primary-500/40' : 'border-white/10 bg-white/[0.04] text-slate-400'}`} />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</label>
-              <input type="text" readOnly value={formatPrice(pendingAmount)} className="h-12 w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 text-sm font-semibold text-white outline-none" />
-            </div>
-
-            <div className="space-y-2 md:col-span-2 xl:col-span-4">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</label>
-              <textarea rows="3" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Transport details, payment note, supplier reminder, or any internal note" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={resetForm} className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">Reset</button>
+              <button type="submit" disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black tracking-[0.08em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60"><Save size={16} />{submitting ? 'Saving...' : 'Confirm & Record Entry →'}</button>
             </div>
           </div>
 
-          <div className="rounded-[1.6rem] border border-white/10 bg-[#151b24] p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Live Purchase Calculation</p>
-                <h4 className="mt-2 text-xl font-black text-white">Stock + Cost Snapshot</h4>
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                New stock after save: {(selectedProduct?.countInStock || 0) + quantity}
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300">
-                  <PackagePlus size={18} />
+          <aside className="space-y-6">
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
+              <div className="flex items-center justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Live Bill Preview</p><h4 className="mt-2 text-xl font-black text-white">Instant purchase snapshot</h4></div><div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Auto updates</div></div>
+              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
+                <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier</p><p className="mt-2 text-lg font-black text-white">{form.supplierName || 'Supplier name'}</p><p className="mt-1 text-sm text-slate-400">{form.supplierPhone || 'Phone number pending'}</p></div><div className="text-right"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill No</p><p className="mt-2 text-sm font-bold text-white">{form.billNumber || 'Draft'}</p><p className="mt-1 text-xs text-slate-500">{form.date || getToday()}</p></div></div>
+                <div className="space-y-4 py-4">
+                  <div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product</p><p className="mt-2 text-base font-black text-white">{selectedProduct?.name || 'Select product'}</p></div><div className="text-right"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</p><p className="mt-2 text-base font-black text-white">{formatPrice(totalCost)}</p></div></div>
+                  <div className="grid grid-cols-2 gap-3 rounded-[1.25rem] border border-white/10 bg-white/[0.03] p-4 text-sm"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Qty</p><p className="mt-1 font-bold text-white">{quantity || 0}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Rate</p><p className="mt-1 font-bold text-white">{formatPrice(costPrice)}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Charges</p><p className="mt-1 font-bold text-white">{formatPrice(extraChargesTotal)}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Status</p><p className="mt-1 font-bold text-white">{form.paymentStatus}</p></div></div>
                 </div>
-                <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Current Stock</p>
-                <p className="mt-2 text-2xl font-black text-white">{selectedProduct?.countInStock || 0}</p>
+                <div className="space-y-3 border-t border-white/10 pt-4"><div className="flex items-center justify-between text-sm text-slate-300"><span>Extra charges</span><span className="font-bold">{formatPrice(extraChargesTotal)}</span></div><div className="flex items-center justify-between text-base text-amber-200"><span className="font-black uppercase tracking-[0.14em]">Final Total</span><span className="text-xl font-black">{formatPrice(finalTotalCost)}</span></div></div>
               </div>
+            </section>
 
-              <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300">
-                  <CalendarDays size={18} />
-                </div>
-                <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Purchased Qty</p>
-                <p className="mt-2 text-2xl font-black text-white">{quantity}</p>
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
+              <div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Live Calculations</p><h4 className="mt-2 text-xl font-black text-white">Stock + cash position</h4></div>
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300"><PackagePlus size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Current Stock</p><p className="mt-2 text-2xl font-black text-white">{selectedProduct?.countInStock || 0}</p></div>
+                <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300"><CalendarDays size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">New Stock</p><p className="mt-2 text-2xl font-black text-white">{(selectedProduct?.countInStock || 0) + quantity}</p></div>
+                <div className="rounded-[1.3rem] border border-emerald-500/20 bg-emerald-500/10 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300"><Wallet size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-200">Paid</p><p className="mt-2 text-2xl font-black text-emerald-100">{formatPrice(paidAmount)}</p></div>
+                <div className="rounded-[1.3rem] border border-red-500/20 bg-red-500/10 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-500/15 text-red-300"><ReceiptText size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-red-200">Pending</p><p className="mt-2 text-2xl font-black text-red-100">{formatPrice(pendingAmount)}</p></div>
               </div>
-
-              <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300">
-                  <Wallet size={18} />
-                </div>
-                <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Paid Amount</p>
-                <p className="mt-2 text-2xl font-black text-white">{formatPrice(paidAmount)}</p>
-              </div>
-
-              <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300">
-                  <ReceiptText size={18} />
-                </div>
-                <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</p>
-                <p className="mt-2 text-2xl font-black text-white">{formatPrice(pendingAmount)}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={resetForm} className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
-              Reset
-            </button>
-            <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60">
-              <Save size={16} />
-              {submitting ? 'Saving...' : editingId ? 'Update Entry' : 'Save Entry'}
-            </button>
-          </div>
+            </section>
+          </aside>
         </form>
       </section>
 
