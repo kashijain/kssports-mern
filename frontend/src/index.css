@@ -35,6 +35,28 @@
     @apply text-slate-900 dark:text-white;
   }
 
+  select {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  select option,
+  select optgroup {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  .dark select {
+    background-color: #151b24;
+    color: #ffffff;
+  }
+
+  .dark select option,
+  .dark select optgroup {
+    background-color: #151b24;
+    color: #ffffff;
+  }
+
   input::placeholder,
   textarea::placeholder {
     @apply text-slate-400 dark:text-slate-500;
