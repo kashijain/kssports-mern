@@ -4,6 +4,7 @@ import PurchaseBill from '../models/PurchaseBill.js';
 const DEFAULT_PRODUCT_IMAGE = '/uploads/product-placeholder.png';
 const CATEGORY_OPTIONS = ['Bat', 'Ball', 'Gloves', 'Accessories', 'Sleeves', 'Shaker', 'Other'];
 const PAYMENT_MODES = new Set(['cash', 'online', 'upi', 'partial', 'pending']);
+const PAYMENT_STATUSES = new Set(['pending', 'paid', 'partial']);
 
 const toNumber = (value, fallback = 0) => {
   const numericValue = Number(value);
@@ -11,18 +12,6 @@ const toNumber = (value, fallback = 0) => {
 };
 
 const toTrimmedString = (value) => String(value ?? '').trim();
-
-const getPaymentStatus = (finalTotal, paidAmount) => {
-  if (paidAmount === 0 || finalTotal <= 0) {
-    return 'pending';
-  }
-
-  if (paidAmount >= finalTotal) {
-    return 'paid';
-  }
-
-  return 'partial';
-};
 
 const normalizeItems = async (items = []) => {
   if (!Array.isArray(items) || !items.length) {
@@ -87,6 +76,7 @@ const buildPurchasePayload = async (body = {}, userId) => {
   const paymentMode = PAYMENT_MODES.has(String(body.paymentMode || '').toLowerCase())
     ? String(body.paymentMode).toLowerCase()
     : 'pending';
+  const paymentStatusValue = String(body.paymentStatus || 'pending').toLowerCase();
   const isDraft = Boolean(body.isDraft);
 
   if (!supplierName) {
@@ -107,6 +97,12 @@ const buildPurchasePayload = async (body = {}, userId) => {
     throw error;
   }
 
+  if (!PAYMENT_STATUSES.has(paymentStatusValue)) {
+    const error = new Error('Payment status must be pending, paid, or partial');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const items = await normalizeItems(body.items);
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
   const transportCharges = Math.max(toNumber(body.transportCharges), 0);
@@ -116,7 +112,6 @@ const buildPurchasePayload = async (body = {}, userId) => {
   const finalTotal = subtotal + extraChargesTotal;
   const paidAmount = Math.min(Math.max(toNumber(body.paidAmount), 0), finalTotal);
   const pendingAmount = Math.max(finalTotal - paidAmount, 0);
-  const paymentStatus = getPaymentStatus(finalTotal, paidAmount);
 
   if (toNumber(body.paidAmount) > finalTotal) {
     const error = new Error('Paid amount cannot exceed final total');
@@ -142,7 +137,7 @@ const buildPurchasePayload = async (body = {}, userId) => {
     paidAmount,
     pendingAmount,
     paymentMode,
-    paymentStatus,
+    paymentStatus: paymentStatusValue,
     notes: toTrimmedString(body.notes),
     isDraft,
     createdBy: userId,

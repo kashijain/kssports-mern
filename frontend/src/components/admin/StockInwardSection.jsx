@@ -22,6 +22,7 @@ import { formatPrice } from '../../utils/price';
 const DRAFT_KEY = 'ks-sports-purchase-bill-draft';
 const categoryOptions = ['Bat', 'Ball', 'Gloves', 'Accessories', 'Sleeves', 'Shaker', 'Other'];
 const paymentModes = ['cash', 'online', 'upi', 'partial', 'pending'];
+const paymentStatuses = ['pending', 'paid', 'partial'];
 
 let rowCounter = 0;
 const createRow = (overrides = {}) => ({
@@ -44,6 +45,7 @@ const emptyForm = () => ({
   billNumber: '',
   billDate: todayInput(),
   paymentMode: 'pending',
+  paymentStatus: 'pending',
   notes: '',
   transportCharges: '0',
   packingCharges: '0',
@@ -73,12 +75,6 @@ const formatDate = (value) => {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
-};
-
-const getPaymentStatus = (finalTotal, paidAmount) => {
-  if (finalTotal <= 0 || paidAmount <= 0) return 'pending';
-  if (paidAmount >= finalTotal) return 'paid';
-  return 'partial';
 };
 
 const escapeHtml = (value = '') =>
@@ -164,7 +160,6 @@ const StockInwardSection = () => {
   const [targetRowId, setTargetRowId] = useState('');
   const [quickProductForm, setQuickProductForm] = useState(emptyQuickProduct());
   const [creatingProduct, setCreatingProduct] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState('pending');
 
   const computedItems = useMemo(
     () =>
@@ -194,6 +189,7 @@ const StockInwardSection = () => {
   const finalTotal = subtotal + extraChargesTotal;
   const paidAmount = Math.min(Math.max(toNumber(form.paidAmount), 0), finalTotal);
   const pendingAmount = Math.max(finalTotal - paidAmount, 0);
+  const paymentStatus = form.paymentStatus || 'pending';
   const totalProducts = computedItems.filter((item) => item.product).length;
 
   const previewBill = {
@@ -272,10 +268,6 @@ const StockInwardSection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    setPaymentStatus(getPaymentStatus(finalTotal, paidAmount));
-  }, [finalTotal, paidAmount]);
-
   const updateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -346,6 +338,7 @@ const StockInwardSection = () => {
     billNumber: form.billNumber,
     billDate: form.billDate,
     paymentMode: form.paymentMode,
+    paymentStatus: form.paymentStatus,
     notes: form.notes,
     transportCharges,
     packingCharges,
@@ -482,6 +475,7 @@ const StockInwardSection = () => {
       billNumber: bill.billNumber || '',
       billDate: bill.billDate ? bill.billDate.slice(0, 10) : todayInput(),
       paymentMode: bill.paymentMode || 'pending',
+      paymentStatus: bill.paymentStatus || 'pending',
       notes: bill.notes || '',
       transportCharges: String(bill.transportCharges ?? 0),
       packingCharges: String(bill.packingCharges ?? 0),
@@ -634,9 +628,17 @@ const StockInwardSection = () => {
               </div>
               <div className="space-y-2">
                 <label className={labelClass}>Payment Status</label>
-                <div className={`flex h-12 items-center rounded-2xl border px-4 text-sm font-black uppercase tracking-[0.18em] ${paymentStatus === 'paid' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200' : paymentStatus === 'partial' ? 'border-amber-400/20 bg-amber-400/10 text-amber-100' : 'border-rose-500/20 bg-rose-500/10 text-rose-100'}`}>
-                  {paymentStatus}
-                </div>
+                <select
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
+                  value={form.paymentStatus}
+                  onChange={(event) => updateForm('paymentStatus', event.target.value)}
+                >
+                  {paymentStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className={labelClass}>Notes / Remarks</label>
