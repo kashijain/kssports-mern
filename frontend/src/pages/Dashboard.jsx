@@ -12,6 +12,7 @@ import SalesReportSection from '../components/admin/SalesReportSection';
 import BatRepairSection from '../components/admin/BatRepairSection';
 import BusinessSummarySection from '../components/admin/BusinessSummarySection';
 import ExpenseManagementSection from '../components/admin/ExpenseManagementSection';
+import StockInwardSection from '../components/admin/StockInwardSection';
 
 const CATEGORY_OPTIONS=[
   'Bat',
@@ -149,6 +150,8 @@ const Dashboard=()=>{
       ?'business-summary'
     :location.pathname.includes('/upload-stock-sheet')
       ?'upload-stock-sheet'
+      :location.pathname.includes('/stock-inward')
+        ?'stock-inward'
       :location.pathname.includes('/offline-sales')
         ?'offline-sales'
         :location.pathname.includes('/bat-repair')
@@ -257,6 +260,7 @@ const Dashboard=()=>{
     form:'Inventory',
     edit:'Inventory',
     'upload-stock-sheet':'Upload Stock Sheet',
+    'stock-inward':'Stock Inward',
     'offline-sales':'Offline Sales',
     'bat-repair':'Bat Repair',
     expenses:'Expenses',
@@ -573,6 +577,7 @@ const Dashboard=()=>{
 
   const sidebar=isSeller?[
     ['inventory','/admin/manage-products',Package,'Inventory'],
+    ['stock-inward','/admin/stock-inward',Package,'Stock Inward'],
     ['offline-sales','/admin/offline-sales',ReceiptIndianRupee,'Offline Sales'],
     ['business-summary','/admin/business-summary',BarChart3,'Summary'],
     ['orders','/admin/orders',Users,'Orders'],
@@ -727,6 +732,8 @@ const Dashboard=()=>{
       {isSeller&&tab==='orders'&&<section className="table-shell"><div className="p-6 md:p-8 border-b"><h3 className="text-2xl font-bold text-slate-900 dark:text-white">Customer Orders</h3></div><div className="overflow-x-auto"><table className="table-premium"><thead><tr><th>Customer</th><th className="text-center">Date</th><th className="text-center">Amount</th><th className="text-center">Payment</th><th className="text-right">Delivery</th></tr></thead><tbody>{orders.map(order=><tr key={order._id}><td><p className="font-bold text-slate-900 dark:text-white">{order.user?.name||'Customer'}</p><p className="text-xs text-slate-500 dark:text-slate-400">#{order._id.slice(-8).toUpperCase()}</p></td><td className="text-center text-slate-600 dark:text-slate-400">{order.createdAt?.substring(0,10)}</td><td className="text-center font-bold text-slate-900 dark:text-white">{formatPrice(order.totalPrice)}</td><td className="text-center"><span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${order.isPaid?'bg-blue-50 text-blue-600 border-blue-200':'bg-yellow-50 text-yellow-600 border-yellow-200'}`}>{order.isPaid?'Paid':'Pending'}</span></td><td className="text-right"><div className="flex items-center justify-end gap-2">{order.isDelivered?<span className="text-green-600 font-bold">Delivered</span>:<button onClick={()=>onDeliver(order._id)} className="text-xs font-bold text-white bg-primary-600 hover:bg-primary-700 px-4 py-2 rounded-xl">Mark Delivered</button>}<button onClick={()=>onDeleteOrder(order._id)} className="text-xs font-bold text-red-500 border border-slate-200 dark:border-dark-border hover:bg-red-50 dark:hover:bg-red-900/10 px-4 py-2 rounded-xl">Delete</button></div></td></tr>)}</tbody></table></div></section>}
 
       {isSeller&&tab==='upload-stock-sheet'&&<UploadStockSheetSection />}
+
+      {isSeller&&tab==='stock-inward'&&<StockInwardSection />}
 
       {isSeller&&tab==='offline-sales'&&<OfflineSalesSection />}
 
