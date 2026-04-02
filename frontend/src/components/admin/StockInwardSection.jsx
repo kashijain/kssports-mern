@@ -58,22 +58,56 @@ const formatDateForInput = (value) => {
 };
 
 const openBillWindow = (entry, { autoPrint = false } = {}) => {
-  const popup = window.open('', '_blank', 'noopener,noreferrer,width=980,height=860');
+  if (!entry) {
+    toast.error('Bill data is not available for this entry');
+    return;
+  }
+
+  let billHtml = '';
+
+  try {
+    billHtml = buildStockInwardBillHtml(entry);
+  } catch (error) {
+    console.error('Failed to build stock inward bill HTML', error);
+    toast.error('Failed to prepare bill preview');
+    return;
+  }
+
+  const popup = window.open('', '_blank', 'width=980,height=860,scrollbars=yes,resizable=yes');
 
   if (!popup) {
     toast.error('Please allow popups to view the bill');
     return;
   }
 
+  let hasPrinted = false;
+  const triggerPrint = () => {
+    if (!autoPrint || hasPrinted || popup.closed) {
+      return;
+    }
+
+    hasPrinted = true;
+    popup.focus();
+    window.setTimeout(() => {
+      popup.print();
+    }, 150);
+  };
+
+  popup.onload = triggerPrint;
+
   popup.document.open();
-  popup.document.write(buildStockInwardBillHtml(entry));
+  popup.document.write(billHtml);
   popup.document.close();
   popup.focus();
 
-  if (autoPrint) {
-    popup.addEventListener('load', () => {
-      popup.print();
-    });
+  if (popup.document.readyState === 'complete') {
+    triggerPrint();
+  } else if (autoPrint) {
+    popup.document.onreadystatechange = () => {
+      if (popup.document.readyState === 'complete') {
+        triggerPrint();
+      }
+    };
   }
 };
 
