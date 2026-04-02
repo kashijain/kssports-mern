@@ -667,14 +667,14 @@ const StockInwardSection = () => {
               {computedItems.map((item, index) => (
                 <div
                   key={item.id}
-                  className="w-full max-w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:p-6"
+                  className="w-full max-w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0d1118]/70 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:p-6"
                 >
                   <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Item {index + 1}</p>
-                      <p className="mt-2 truncate text-sm leading-6 text-slate-400">{item.productData?.name || 'Select or create a product'}</p>
+                      <p className="mt-2 min-w-0 truncate text-sm leading-6 text-slate-400">{item.productData?.name || 'Select or create a product'}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
                       <button type="button" onClick={() => { setTargetRowId(item.id); setQuickProductForm(emptyQuickProduct()); setShowQuickCreate(true); }} className="inline-flex items-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-primary-100 transition-all hover:bg-primary-500/15">
                         <Plus size={14} /> Create New
                       </button>
@@ -684,7 +684,7 @@ const StockInwardSection = () => {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid w-full max-w-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_120px]">
+                  <div className="mt-5 grid w-full max-w-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_140px]">
                     <div className="min-w-0 space-y-2.5">
                       <label className={`${labelClass} block`}>Product</label>
                       <select
@@ -704,9 +704,9 @@ const StockInwardSection = () => {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid w-full max-w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_auto] xl:items-end">
+                  <div className="mt-4 grid w-full max-w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div className="min-w-0 space-y-2.5">
-                      <label className={`${labelClass} block`}>Cost / Item</label>
+                      <label className={`${labelClass} block`}>Cost Price</label>
                       <input className={inputClass} type="number" min="0" step="0.01" value={item.costPrice} onChange={(event) => updateRow(item.id, 'costPrice', event.target.value)} />
                     </div>
                     <div className="min-w-0 space-y-2.5">
@@ -716,22 +716,6 @@ const StockInwardSection = () => {
                     <div className="min-w-0 space-y-2.5">
                       <label className={`${labelClass} block`}>Row Total</label>
                       <div className="flex h-12 w-full items-center rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 text-sm font-black text-amber-100">{formatPrice(item.lineTotal)}</div>
-                    </div>
-                    <div className="flex min-w-0 flex-wrap gap-2 md:col-span-2 xl:col-span-1 xl:justify-end">
-                      <button
-                        type="button"
-                        onClick={() => { setTargetRowId(item.id); setQuickProductForm(emptyQuickProduct()); setShowQuickCreate(true); }}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 text-xs font-bold uppercase tracking-[0.16em] text-primary-100 transition-all hover:bg-primary-500/15"
-                      >
-                        <Plus size={14} /> New
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeRow(item.id)}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 text-xs font-bold uppercase tracking-[0.16em] text-rose-200 transition-all hover:bg-rose-500/15"
-                      >
-                        <X size={14} /> Remove
-                      </button>
                     </div>
                   </div>
                 </div>
