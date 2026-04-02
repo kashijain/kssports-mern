@@ -663,49 +663,65 @@ const StockInwardSection = () => {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="hidden grid-cols-[minmax(260px,1.6fr)_90px_140px_140px_140px_180px] gap-4 rounded-[1.4rem] border border-white/10 bg-white/[0.03] px-5 py-4 xl:grid">
+              {['Product', 'Qty', 'Cost / Item', 'Selling Price', 'Row Total', 'Actions'].map((heading) => (
+                <p key={heading} className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                  {heading}
+                </p>
+              ))}
+            </div>
+
+            <div className="mt-4 space-y-5">
               {computedItems.map((item, index) => (
-                <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-4 md:p-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:p-6">
+                  <div className="flex flex-col gap-4 xl:hidden sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Item {index + 1}</p>
-                      <p className="mt-1 text-sm text-slate-400">{item.productData?.name || 'Select or create a product'}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-400">{item.productData?.name || 'Select or create a product'}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => { setTargetRowId(item.id); setQuickProductForm(emptyQuickProduct()); setShowQuickCreate(true); }} className="inline-flex items-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-primary-100">
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <button type="button" onClick={() => { setTargetRowId(item.id); setQuickProductForm(emptyQuickProduct()); setShowQuickCreate(true); }} className="inline-flex items-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-primary-100 transition-all hover:bg-primary-500/15">
                         <Plus size={14} /> Create New
                       </button>
-                      <button type="button" onClick={() => removeRow(item.id)} className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-rose-200">
+                      <button type="button" onClick={() => removeRow(item.id)} className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-rose-200 transition-all hover:bg-rose-500/15">
                         <X size={14} /> Remove
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_100px_140px_140px_150px]">
-                    <div className="space-y-2">
-                      <label className={labelClass}>Product</label>
-                      <select className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" value={item.product} onChange={(event) => handleProductSelect(item.id, event.target.value)}>
+                  <div className="mt-5 grid grid-cols-1 gap-x-4 gap-y-5 md:grid-cols-2 xl:mt-0 xl:grid-cols-[minmax(260px,1.6fr)_90px_140px_140px_140px_180px] xl:items-end">
+                    <div className="space-y-2.5 md:col-span-2 xl:col-span-1">
+                      <label className={`${labelClass} block xl:hidden`}>Product</label>
+                      <select className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 pr-10 text-sm text-white outline-none transition-all focus:border-primary-500/40 focus:ring-2 focus:ring-primary-500/10" value={item.product} onChange={(event) => handleProductSelect(item.id, event.target.value)}>
                         <option value="" disabled>Select inventory product</option>
                         {products.map((product) => (
                           <option key={product._id} value={product._id}>{product.name}</option>
                         ))}
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <label className={labelClass}>Qty</label>
+                    <div className="space-y-2.5">
+                      <label className={`${labelClass} block xl:hidden`}>Qty</label>
                       <input className={inputClass} type="number" min="1" value={item.quantity} onChange={(event) => updateRow(item.id, 'quantity', event.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                      <label className={labelClass}>Cost / Item</label>
+                    <div className="space-y-2.5">
+                      <label className={`${labelClass} block xl:hidden`}>Cost / Item</label>
                       <input className={inputClass} type="number" min="0" step="0.01" value={item.costPrice} onChange={(event) => updateRow(item.id, 'costPrice', event.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                      <label className={labelClass}>Selling Price</label>
+                    <div className="space-y-2.5">
+                      <label className={`${labelClass} block xl:hidden`}>Selling Price</label>
                       <input className={inputClass} type="number" min="0" step="0.01" value={item.sellingPrice} onChange={(event) => updateRow(item.id, 'sellingPrice', event.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                      <label className={labelClass}>Row Total</label>
+                    <div className="space-y-2.5">
+                      <label className={`${labelClass} block xl:hidden`}>Row Total</label>
                       <div className="flex h-12 items-center rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 text-sm font-black text-amber-100">{formatPrice(item.lineTotal)}</div>
+                    </div>
+                    <div className="hidden xl:flex xl:items-center xl:justify-end xl:gap-2">
+                      <button type="button" onClick={() => { setTargetRowId(item.id); setQuickProductForm(emptyQuickProduct()); setShowQuickCreate(true); }} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 text-xs font-bold uppercase tracking-[0.16em] text-primary-100 transition-all hover:bg-primary-500/15">
+                        <Plus size={14} /> New
+                      </button>
+                      <button type="button" onClick={() => removeRow(item.id)} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 text-xs font-bold uppercase tracking-[0.16em] text-rose-200 transition-all hover:bg-rose-500/15">
+                        <X size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
