@@ -5,6 +5,7 @@ import {
   CircleDollarSign,
   FileText,
   PackagePlus,
+  Plus,
   Printer,
   ReceiptText,
   Save,
@@ -22,22 +23,25 @@ import {
 } from './stockInwardBillUtils';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
+const emptySummary = { totalSuppliers: 0, totalPurchaseValue: 0, totalPaid: 0, totalPending: 0 };
+const PRODUCT_CATEGORY_OPTIONS = ['Bat', 'Ball', 'Gloves', 'Accessories', 'Sleeves', 'Shaker', 'Other'];
+const paymentStatuses = ['Paid', 'Pending', 'Partial'];
 
-const emptySummary = {
-  totalSuppliers: 0,
-  totalPurchaseValue: 0,
-  totalPaid: 0,
-  totalPending: 0,
-};
+let nextStockInwardLineId = 0;
+const createLineItem = (overrides = {}) => ({
+  id: `line-${nextStockInwardLineId++}`,
+  product: '',
+  quantity: '1',
+  costPrice: '',
+  ...overrides,
+});
 
 const createEmptyForm = () => ({
   date: getToday(),
   supplierName: '',
   supplierPhone: '',
   billNumber: '',
-  product: '',
-  quantity: '1',
-  costPrice: '',
+  items: [createLineItem()],
   transportCharges: '0',
   rentCharges: '0',
   loadingCharges: '0',
@@ -47,14 +51,63 @@ const createEmptyForm = () => ({
   notes: '',
 });
 
-const paymentStatuses = ['Paid', 'Pending', 'Partial'];
+const createEmptyQuickProductForm = () => ({
+  name: '',
+  category: PRODUCT_CATEGORY_OPTIONS[0],
+  price: '',
+  costPrice: '',
+  countInStock: '0',
+  description: '',
+});
 
-const formatDateForInput = (value) => {
-  if (!value) {
-    return getToday();
+const formatDateForInput = (value) => (!value ? getToday() : new Date(value).toISOString().slice(0, 10));
+const toNumber = (value) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+const getEntryItems = (entry = {}) => {
+  if (Array.isArray(entry.items) && entry.items.length) {
+    return entry.items.map((item, index) => ({
+      id: item._id || `entry-item-${index}`,
+      product: item.product?._id || item.product || '',
+      productName: item.productName || item.product?.name || '-',
+      quantity: toNumber(item.quantity),
+      costPrice: toNumber(item.costPrice),
+      lineTotal: toNumber(item.lineTotal) || toNumber(item.quantity) * toNumber(item.costPrice),
+    }));
   }
 
-  return new Date(value).toISOString().slice(0, 10);
+  if (entry.product) {
+    return [{
+      id: 'legacy-entry-item',
+      product: entry.product?._id || entry.product || '',
+      productName: entry.productName || entry.product?.name || '-',
+      quantity: toNumber(entry.quantity),
+      costPrice: toNumber(entry.costPrice),
+      lineTotal: toNumber(entry.totalCost) || toNumber(entry.quantity) * toNumber(entry.costPrice),
+    }];
+  }
+
+  return [];
+};
+
+const getEntryProductSummary = (entry) => {
+  const items = getEntryItems(entry);
+  if (!items.length) return { primaryLabel: '-', secondaryLabel: 'No product lines', totalQuantity: 0 };
+  if (items.length === 1) {
+    return {
+      primaryLabel: items[0].productName,
+      secondaryLabel: `${items[0].quantity} units`,
+      totalQuantity: items[0].quantity,
+    };
+  }
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  return {
+    primaryLabel: `${items[0].productName} +${items.length - 1} more`,
+    secondaryLabel: `${totalQuantity} units across ${items.length} products`,
+    totalQuantity,
+  };
 };
 
 const openBillWindow = (entry, { autoPrint = false } = {}) => {
@@ -64,7 +117,6 @@ const openBillWindow = (entry, { autoPrint = false } = {}) => {
   }
 
   let billHtml = '';
-
   try {
     billHtml = buildStockInwardBillHtml(entry);
   } catch (error) {
@@ -74,7 +126,6 @@ const openBillWindow = (entry, { autoPrint = false } = {}) => {
   }
 
   const popup = window.open('', '_blank', 'width=980,height=860,scrollbars=yes,resizable=yes');
-
   if (!popup) {
     toast.error('Please allow popups to view the bill');
     return;
@@ -82,19 +133,13 @@ const openBillWindow = (entry, { autoPrint = false } = {}) => {
 
   let hasPrinted = false;
   const triggerPrint = () => {
-    if (!autoPrint || hasPrinted || popup.closed) {
-      return;
-    }
-
+    if (!autoPrint || hasPrinted || popup.closed) return;
     hasPrinted = true;
     popup.focus();
-    window.setTimeout(() => {
-      popup.print();
-    }, 150);
+    window.setTimeout(() => popup.print(), 150);
   };
 
   popup.onload = triggerPrint;
-
   popup.document.open();
   popup.document.write(billHtml);
   popup.document.close();
@@ -104,9 +149,7 @@ const openBillWindow = (entry, { autoPrint = false } = {}) => {
     triggerPrint();
   } else if (autoPrint) {
     popup.document.onreadystatechange = () => {
-      if (popup.document.readyState === 'complete') {
-        triggerPrint();
-      }
+      if (popup.document.readyState === 'complete') triggerPrint();
     };
   }
 };
@@ -120,40 +163,41 @@ const StockInwardSection = () => {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState('');
   const [activeBill, setActiveBill] = useState(null);
+  const [showCreateProductModal, setShowCreateProductModal] = useState(false);
+  const [createProductRowId, setCreateProductRowId] = useState('');
+  const [quickProductForm, setQuickProductForm] = useState(createEmptyQuickProductForm());
+  const [creatingProduct, setCreatingProduct] = useState(false);
 
-  const selectedProduct = useMemo(
-    () => products.find((product) => product._id === form.product) || null,
-    [products, form.product]
-  );
+  const items = useMemo(() => (form.items || []).map((item) => {
+    const product = products.find((productItem) => productItem._id === item.product) || null;
+    const quantity = Math.max(toNumber(item.quantity), 0);
+    const costPrice = Math.max(toNumber(item.costPrice), 0);
+    return {
+      ...item,
+      productData: product,
+      productName: product?.name || '',
+      quantityValue: quantity,
+      costPriceValue: costPrice,
+      lineTotal: quantity * costPrice,
+      projectedStock: (toNumber(product?.countInStock) || 0) + quantity,
+    };
+  }), [form.items, products]);
 
-  const quantity = Number(form.quantity) || 0;
-  const costPrice = Number(form.costPrice) || 0;
-  const transportCharges = Number(form.transportCharges) || 0;
-  const rentCharges = Number(form.rentCharges) || 0;
-  const loadingCharges = Number(form.loadingCharges) || 0;
-  const otherCharges = Number(form.otherCharges) || 0;
-  const totalCost = quantity * costPrice;
-  const extraChargesTotal =
-    transportCharges + rentCharges + loadingCharges + otherCharges;
-  const finalTotalCost =
-    totalCost + extraChargesTotal;
+  const itemCount = items.length;
+  const totalUnits = items.reduce((sum, item) => sum + item.quantityValue, 0);
+  const transportCharges = toNumber(form.transportCharges);
+  const rentCharges = toNumber(form.rentCharges);
+  const loadingCharges = toNumber(form.loadingCharges);
+  const otherCharges = toNumber(form.otherCharges);
+  const baseCost = items.reduce((sum, item) => sum + item.lineTotal, 0);
+  const extraChargesTotal = transportCharges + rentCharges + loadingCharges + otherCharges;
+  const finalTotalCost = baseCost + extraChargesTotal;
 
   const paidAmount = useMemo(() => {
-    if (form.paymentStatus === 'Paid') {
-      return finalTotalCost;
-    }
-
-    if (form.paymentStatus === 'Pending') {
-      return 0;
-    }
-
-    const value = Number(form.paidAmount);
-    if (!Number.isFinite(value) || value < 0) {
-      return 0;
-    }
-
-    return Math.min(value, finalTotalCost);
-  }, [finalTotalCost, form.paymentStatus, form.paidAmount]);
+    if (form.paymentStatus === 'Paid') return finalTotalCost;
+    if (form.paymentStatus === 'Pending') return 0;
+    return Math.min(Math.max(toNumber(form.paidAmount), 0), finalTotalCost);
+  }, [finalTotalCost, form.paidAmount, form.paymentStatus]);
 
   const pendingAmount = Math.max(finalTotalCost - paidAmount, 0);
 
@@ -161,14 +205,15 @@ const StockInwardSection = () => {
     try {
       const { data } = await api.get('/products');
       setProducts(data.products || []);
+      return data.products || [];
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to load inventory products');
+      return [];
     }
   };
 
   const loadEntries = async () => {
     setLoading(true);
-
     try {
       const { data } = await api.get('/admin-inventory/stock-inward');
       setEntries(data.entries || []);
@@ -188,50 +233,128 @@ const StockInwardSection = () => {
   const resetForm = () => {
     setEditingId('');
     setForm(createEmptyForm());
+    setCreateProductRowId('');
+    setQuickProductForm(createEmptyQuickProductForm());
+    setShowCreateProductModal(false);
   };
 
-  const handleProductChange = (productId) => {
-    const product = products.find((item) => item._id === productId);
-
+  const updateFormField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+  const updateLineItem = (lineId, field, value) => {
     setForm((current) => ({
       ...current,
-      product: productId,
-      costPrice:
-        current.costPrice && Number(current.costPrice) > 0
-          ? current.costPrice
-          : product?.costPrice !== undefined
-            ? String(product.costPrice)
-            : '',
+      items: current.items.map((item) => (item.id === lineId ? { ...item, [field]: value } : item)),
     }));
+  };
+  const handleLineProductChange = (lineId, productId) => {
+    const product = products.find((item) => item._id === productId);
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item) =>
+        item.id === lineId
+          ? {
+              ...item,
+              product: productId,
+              costPrice:
+                item.costPrice && Number(item.costPrice) > 0
+                  ? item.costPrice
+                  : product?.costPrice !== undefined
+                    ? String(product.costPrice)
+                    : '',
+            }
+          : item
+      ),
+    }));
+  };
+
+  const addLineItem = () => setForm((current) => ({ ...current, items: [...current.items, createLineItem()] }));
+  const removeLineItem = (lineId) => {
+    setForm((current) => ({
+      ...current,
+      items: current.items.length === 1 ? [createLineItem()] : current.items.filter((item) => item.id !== lineId),
+    }));
+  };
+
+  const openCreateProductModal = (lineId = '') => {
+    setCreateProductRowId(lineId);
+    setQuickProductForm(createEmptyQuickProductForm());
+    setShowCreateProductModal(true);
+  };
+
+  const handleQuickProductCreate = async (event) => {
+    event.preventDefault();
+    setCreatingProduct(true);
+    try {
+      const payload = {
+        ...quickProductForm,
+        price: toNumber(quickProductForm.price),
+        costPrice: toNumber(quickProductForm.costPrice),
+        countInStock: toNumber(quickProductForm.countInStock),
+      };
+      const { data } = await api.post('/admin-inventory/stock-inward/products', payload);
+      const createdProduct = data.product;
+
+      setProducts((current) => {
+        const withoutDuplicate = current.filter((item) => item._id !== createdProduct._id);
+        return [...withoutDuplicate, createdProduct];
+      });
+
+      if (createProductRowId) {
+        setForm((current) => ({
+          ...current,
+          items: current.items.map((item) =>
+            item.id === createProductRowId
+              ? { ...item, product: createdProduct._id, costPrice: String(createdProduct.costPrice ?? '') }
+              : item
+          ),
+        }));
+      }
+
+      setShowCreateProductModal(false);
+      setQuickProductForm(createEmptyQuickProductForm());
+      setCreateProductRowId('');
+      toast.success('New product created and added to the bill');
+      await loadProducts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to create product');
+    } finally {
+      setCreatingProduct(false);
+    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const validItems = items.filter((item) => item.product && item.quantityValue > 0);
 
+    if (!validItems.length) {
+      toast.error('Add at least one product line with quantity');
+      return;
+    }
+    if (validItems.length !== items.length) {
+      toast.error('Complete all product lines before saving');
+      return;
+    }
+    if (new Set(validItems.map((item) => item.product)).size !== validItems.length) {
+      toast.error('Please keep one row per product in the inward bill');
+      return;
+    }
     if (form.paymentStatus === 'Partial' && paidAmount <= 0) {
       toast.error('Paid amount is required for partial payment');
       return;
     }
 
     setSubmitting(true);
-
     const payload = {
       date: form.date,
       supplierName: form.supplierName,
       supplierPhone: form.supplierPhone,
       billNumber: form.billNumber,
-      product: form.product,
-      quantity,
-      costPrice,
-      totalCost,
+      items: validItems.map((item) => ({ product: item.product, quantity: item.quantityValue, costPrice: item.costPriceValue })),
       transportCharges,
       rentCharges,
       loadingCharges,
       otherCharges,
-      finalTotalCost,
       paymentStatus: form.paymentStatus,
       paidAmount,
-      pendingAmount,
       notes: form.notes,
     };
 
@@ -247,25 +370,23 @@ const StockInwardSection = () => {
       resetForm();
       await Promise.all([loadProducts(), loadEntries()]);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          (editingId ? 'Failed to update stock inward entry' : 'Failed to save stock inward entry')
-      );
+      toast.error(error.response?.data?.message || (editingId ? 'Failed to update stock inward entry' : 'Failed to save stock inward entry'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleEdit = (entry) => {
+    const entryItems = getEntryItems(entry);
     setEditingId(entry._id);
     setForm({
       date: formatDateForInput(entry.date),
       supplierName: entry.supplierName || '',
       supplierPhone: entry.supplierPhone || '',
       billNumber: entry.billNumber || '',
-      product: entry.product?._id || entry.product || '',
-      quantity: String(entry.quantity ?? 1),
-      costPrice: String(entry.costPrice ?? ''),
+      items: entryItems.length
+        ? entryItems.map((item) => createLineItem({ product: item.product, quantity: String(item.quantity || 1), costPrice: String(item.costPrice ?? '') }))
+        : [createLineItem()],
       transportCharges: String(entry.transportCharges ?? 0),
       rentCharges: String(entry.rentCharges ?? 0),
       loadingCharges: String(entry.loadingCharges ?? 0),
@@ -278,21 +399,11 @@ const StockInwardSection = () => {
   };
 
   const handleDelete = async (entryId) => {
-    if (!window.confirm('Delete this stock inward entry? This will reduce stock accordingly.')) {
-      return;
-    }
-
+    if (!window.confirm('Delete this stock inward entry? This will reduce stock accordingly.')) return;
     try {
       await api.delete(`/admin-inventory/stock-inward/${entryId}`);
-
-      if (editingId === entryId) {
-        resetForm();
-      }
-
-      if (activeBill?._id === entryId) {
-        setActiveBill(null);
-      }
-
+      if (editingId === entryId) resetForm();
+      if (activeBill?._id === entryId) setActiveBill(null);
       toast.success('Stock inward entry deleted');
       await Promise.all([loadProducts(), loadEntries()]);
     } catch (error) {
@@ -309,84 +420,38 @@ const StockInwardSection = () => {
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary-300">K.S. Sports Procurement Desk</p>
               <h2 className="mt-3 text-3xl font-black uppercase tracking-tight text-white md:text-4xl">Stock Inward</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-                Record supplier purchases, push stock directly into inventory, and keep a clean inward history with bill-ready records.
-              </p>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">Record supplier purchases, push stock directly into inventory, and keep a clean inward history with bill-ready records.</p>
             </div>
             <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Selected Product</p>
-              <p className="mt-2 text-xl font-black text-white">{selectedProduct?.name || 'Choose product'}</p>
-              <p className="mt-1 text-sm text-slate-400">
-                {selectedProduct ? `${selectedProduct.countInStock || 0} currently in stock` : 'Inventory products load from the existing catalog'}
-              </p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Current Bill Scope</p>
+              <p className="mt-2 text-xl font-black text-white">{itemCount} product lines</p>
+              <p className="mt-1 text-sm text-slate-400">{totalUnits} total units selected for this inward bill</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]">
-              <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div>
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-300">
-                <Users size={20} />
-              </div>
-              <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Suppliers</p>
-              <p className="mt-3 text-3xl font-black tracking-tight text-white">{summary.totalSuppliers || 0}</p>
-              <p className="mt-2 text-sm text-slate-400">Unique wholesalers in inward history</p>
-            </div>
-
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]">
-              <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div>
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300">
-                <CircleDollarSign size={20} />
-              </div>
-              <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Purchase Value</p>
-              <p className="mt-3 text-3xl font-black tracking-tight text-white">{formatPrice(summary.totalPurchaseValue || 0)}</p>
-              <p className="mt-2 text-sm text-slate-400">{entries.length} inward records</p>
-            </div>
-
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]">
-              <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div>
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
-                <Wallet size={20} />
-              </div>
-              <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Paid</p>
-              <p className="mt-3 text-3xl font-black tracking-tight text-white">{formatPrice(summary.totalPaid || 0)}</p>
-              <p className="mt-2 text-sm text-slate-400">Captured from saved inward entries</p>
-            </div>
-
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]">
-              <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div>
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300">
-                <Truck size={20} />
-              </div>
-              <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Pending</p>
-              <p className="mt-3 text-3xl font-black tracking-tight text-white">{formatPrice(summary.totalPending || 0)}</p>
-              <p className="mt-2 text-sm text-slate-400">Open supplier balance</p>
-            </div>
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]"><div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div><div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-300"><Users size={20} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Suppliers</p><p className="mt-3 text-3xl font-black tracking-tight text-white">{summary.totalSuppliers || 0}</p><p className="mt-2 text-sm text-slate-400">Unique wholesalers in inward history</p></div>
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]"><div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div><div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300"><CircleDollarSign size={20} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Purchase Value</p><p className="mt-3 text-3xl font-black tracking-tight text-white">{formatPrice(summary.totalPurchaseValue || 0)}</p><p className="mt-2 text-sm text-slate-400">{entries.length} inward records</p></div>
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]"><div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div><div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300"><Wallet size={20} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Paid</p><p className="mt-3 text-3xl font-black tracking-tight text-white">{formatPrice(summary.totalPaid || 0)}</p><p className="mt-2 text-sm text-slate-400">Captured from saved inward entries</p></div>
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_22px_60px_-36px_rgba(0,0,0,0.95)]"><div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-white/5 blur-3xl"></div><div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300"><Truck size={20} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Total Pending</p><p className="mt-3 text-3xl font-black tracking-tight text-white">{formatPrice(summary.totalPending || 0)}</p><p className="mt-2 text-sm text-slate-400">Open supplier balance</p></div>
           </div>
         </div>
       </section>
-
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Purchase Form</p>
-            <h3 className="mt-2 text-2xl font-black tracking-tight text-white">
-              {editingId ? 'Update Stock Inward Entry' : 'Create Stock Inward Entry'}
-            </h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Saving this entry increases inventory stock automatically and updates the latest product cost price.
-            </p>
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-white">{editingId ? 'Update Stock Inward Entry' : 'Create Stock Inward Entry'}</h3>
+            <p className="mt-2 text-sm text-slate-400">Saving this entry increases inventory stock automatically for every selected product and refreshes the latest cost price.</p>
           </div>
-          {editingId && (
-            <button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
-              <X size={16} />
-              Cancel Edit
-            </button>
-          )}
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => openCreateProductModal(form.items[form.items.length - 1]?.id || '')} className="inline-flex items-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-5 py-3 text-sm font-bold text-primary-100 transition-all hover:bg-primary-500/15"><Plus size={16} />Create New Product</button>
+            {editingId && <button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"><X size={16} />Cancel Edit</button>}
+          </div>
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-[1.5rem] border border-white/10 bg-[#151b24] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</p><p className="mt-3 text-3xl font-black text-white">{formatPrice(totalCost)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">{quantity} x {formatPrice(costPrice)}</p></div>
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#151b24] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</p><p className="mt-3 text-3xl font-black text-white">{formatPrice(baseCost)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">{itemCount} lines / {totalUnits} units</p></div>
           <div className="rounded-[1.5rem] border border-white/10 bg-[#151b24] p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Extra Charges</p><p className="mt-3 text-3xl font-black text-white">{formatPrice(extraChargesTotal)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-500">Transport, rent, loading, other</p></div>
           <div className="rounded-[1.5rem] border border-amber-500/25 bg-amber-500/10 p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200">Final Total</p><p className="mt-3 text-3xl font-black text-amber-100">{formatPrice(finalTotalCost)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-amber-300/80">Base cost + charges</p></div>
           <div className="rounded-[1.5rem] border border-emerald-500/25 bg-emerald-500/10 p-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-200">Paid Amount</p><p className="mt-3 text-3xl font-black text-emerald-100">{formatPrice(paidAmount)}</p><p className="mt-2 text-xs uppercase tracking-[0.16em] text-emerald-300/80">{form.paymentStatus} payment plan</p></div>
@@ -396,68 +461,73 @@ const StockInwardSection = () => {
         <form onSubmit={handleSubmit} className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_380px]">
           <div className="space-y-6">
             <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Supplier Details</p>
-                  <h4 className="mt-2 text-xl font-black text-white">Vendor and document basics</h4>
-                </div>
-              </div>
+              <div className="mb-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Supplier Details</p><h4 className="mt-2 text-xl font-black text-white">Vendor and document basics</h4></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</label><input type="date" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill Number</label><input type="text" value={form.billNumber} onChange={(event) => setForm((current) => ({ ...current, billNumber: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Bill / invoice number" /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier / Wholesaler Name</label><input type="text" value={form.supplierName} onChange={(event) => setForm((current) => ({ ...current, supplierName: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Enter supplier name" required /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier Phone</label><input type="text" value={form.supplierPhone} onChange={(event) => setForm((current) => ({ ...current, supplierPhone: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Phone number" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</label><input type="date" value={form.date} onChange={(event) => updateFormField('date', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill Number</label><input type="text" value={form.billNumber} onChange={(event) => updateFormField('billNumber', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Bill / invoice number" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier / Wholesaler Name</label><input type="text" value={form.supplierName} onChange={(event) => updateFormField('supplierName', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Enter supplier name" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier Phone</label><input type="text" value={form.supplierPhone} onChange={(event) => updateFormField('supplierPhone', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Phone number" /></div>
               </div>
             </section>
 
             <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Product Details</p>
-                  <h4 className="mt-2 text-xl font-black text-white">Inventory selection and base pricing</h4>
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                  Stock after save: {(selectedProduct?.countInStock || 0) + quantity}
-                </div>
+              <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Product Details</p><h4 className="mt-2 text-xl font-black text-white">Multiple product inward lines</h4></div>
+                <div className="flex flex-wrap gap-3"><button type="button" onClick={addLineItem} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"><Plus size={14} />Add Another Product</button><div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{itemCount} lines active</div></div>
               </div>
+
+              <div className="space-y-4">
+                {items.map((item, index) => (
+                  <div key={item.id} className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
+                    <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Line Item {index + 1}</p><p className="mt-1 text-sm text-slate-400">{item.productData ? `${item.productData.countInStock || 0} in stock before inward` : 'Select or create a product'}</p></div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => openCreateProductModal(item.id)} className="inline-flex items-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-primary-100 transition-all hover:bg-primary-500/15"><Plus size={14} />Create New Product</button>
+                        <button type="button" onClick={() => removeLineItem(item.id)} className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-red-300 transition-all hover:bg-red-500/15"><X size={14} />Remove</button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_140px_160px_160px]">
+                      <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label><select value={item.product} onChange={(event) => handleLineProductChange(item.id, event.target.value)} className="relative z-10 h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required><option value="" disabled className="bg-[#151b24] text-white">Select product from inventory</option>{products.map((product) => (<option key={product._id} value={product._id} className="bg-[#151b24] text-white">{product.name}</option>))}</select></div>
+                      <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Quantity</label><input type="number" min="1" value={item.quantity} onChange={(event) => updateLineItem(item.id, 'quantity', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
+                      <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Cost Price</label><input type="number" min="0" step="0.01" value={item.costPrice} onChange={(event) => updateLineItem(item.id, 'costPrice', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" placeholder="Purchase rate" required /></div>
+                      <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Line Total</label><div className="flex h-12 items-center rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 text-sm font-black text-primary-100">{formatPrice(item.lineTotal)}</div></div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-[1.15rem] border border-white/10 bg-[#10151d]/70 px-4 py-3"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Current Stock</p><p className="mt-2 text-lg font-black text-white">{item.productData?.countInStock ?? 0}</p></div>
+                      <div className="rounded-[1.15rem] border border-white/10 bg-[#10151d]/70 px-4 py-3"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Projected Stock</p><p className="mt-2 text-lg font-black text-white">{item.projectedStock}</p></div>
+                      <div className="rounded-[1.15rem] border border-white/10 bg-[#10151d]/70 px-4 py-3"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Selected Product</p><p className="mt-2 text-sm font-bold text-white">{item.productData?.name || 'Waiting for selection'}</p></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
+              <div className="mb-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Additional Charges</p><h4 className="mt-2 text-xl font-black text-white">Operational cost breakdown</h4></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label><select value={form.product} onChange={(event) => handleProductChange(event.target.value)} className="relative z-10 h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required><option value="" disabled className="bg-[#151b24] text-white">Select product from inventory</option>{products.map((product) => (<option key={product._id} value={product._id} className="bg-[#151b24] text-white">{product.name}</option>))}</select></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Quantity Purchased</label><input type="number" min="1" value={form.quantity} onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Cost Price Per Item</label><input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => setForm((current) => ({ ...current, costPrice: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" placeholder="Purchase rate" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Transport Charges</label><input type="number" min="0" step="0.01" value={form.transportCharges} onChange={(event) => updateFormField('transportCharges', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Rent Charges</label><input type="number" min="0" step="0.01" value={form.rentCharges} onChange={(event) => updateFormField('rentCharges', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Loading Charges</label><input type="number" min="0" step="0.01" value={form.loadingCharges} onChange={(event) => updateFormField('loadingCharges', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Other Charges</label><input type="number" min="0" step="0.01" value={form.otherCharges} onChange={(event) => updateFormField('otherCharges', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
               </div>
             </section>
 
             <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
-              <div className="mb-5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Additional Charges</p>
-                <h4 className="mt-2 text-xl font-black text-white">Operational cost breakdown</h4>
-              </div>
+              <div className="mb-5"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Payment Summary</p><h4 className="mt-2 text-xl font-black text-white">Settlement and final review</h4></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Transport Charges</label><input type="number" min="0" step="0.01" value={form.transportCharges} onChange={(event) => setForm((current) => ({ ...current, transportCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Rent Charges</label><input type="number" min="0" step="0.01" value={form.rentCharges} onChange={(event) => setForm((current) => ({ ...current, rentCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Loading Charges</label><input type="number" min="0" step="0.01" value={form.loadingCharges} onChange={(event) => setForm((current) => ({ ...current, loadingCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Other Charges</label><input type="number" min="0" step="0.01" value={form.otherCharges} onChange={(event) => setForm((current) => ({ ...current, otherCharges: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
-              </div>
-            </section>
-
-            <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
-              <div className="mb-5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Payment Summary</p>
-                <h4 className="mt-2 text-xl font-black text-white">Settlement and final review</h4>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Status</label><select value={form.paymentStatus} onChange={(event) => setForm((current) => ({ ...current, paymentStatus: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required>{paymentStatuses.map((status) => (<option key={status} value={status}>{status}</option>))}</select></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Paid Amount</label><input type="number" min="0" step="0.01" value={form.paymentStatus === 'Paid' ? String(finalTotalCost) : form.paymentStatus === 'Pending' ? '0' : form.paidAmount} onChange={(event) => setForm((current) => ({ ...current, paidAmount: event.target.value }))} readOnly={form.paymentStatus !== 'Partial'} className={`h-12 w-full rounded-2xl border px-4 text-sm outline-none transition-all ${form.paymentStatus === 'Partial' ? 'border-white/10 bg-white/[0.04] text-white focus:border-primary-500/40' : 'border-white/10 bg-white/[0.04] text-slate-400'}`} /></div>
-                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</label><input type="text" readOnly value={formatPrice(totalCost)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none" /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Status</label><select value={form.paymentStatus} onChange={(event) => updateFormField('paymentStatus', event.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required>{paymentStatuses.map((status) => (<option key={status} value={status}>{status}</option>))}</select></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Paid Amount</label><input type="number" min="0" step="0.01" value={form.paymentStatus === 'Paid' ? String(finalTotalCost) : form.paymentStatus === 'Pending' ? '0' : form.paidAmount} onChange={(event) => updateFormField('paidAmount', event.target.value)} readOnly={form.paymentStatus !== 'Partial'} className={`h-12 w-full rounded-2xl border px-4 text-sm outline-none transition-all ${form.paymentStatus === 'Partial' ? 'border-white/10 bg-white/[0.04] text-white focus:border-primary-500/40' : 'border-white/10 bg-white/[0.04] text-slate-400'}`} /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</label><input type="text" readOnly value={formatPrice(baseCost)} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none" /></div>
                 <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Final Total Cost</label><input type="text" readOnly value={formatPrice(finalTotalCost)} className="h-12 w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 text-sm font-semibold text-amber-100 outline-none" /></div>
                 <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</label><input type="text" readOnly value={formatPrice(pendingAmount)} className="h-12 w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-4 text-sm font-semibold text-red-100 outline-none" /></div>
-                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</label><textarea rows="3" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Transport details, payment note, supplier reminder, or any internal note" /></div>
+                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</label><textarea rows="3" value={form.notes} onChange={(event) => updateFormField('notes', event.target.value)} className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Transport details, payment note, supplier reminder, or any internal note" /></div>
               </div>
             </section>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button type="button" onClick={resetForm} className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">Reset</button>
-              <button type="submit" disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black tracking-[0.08em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60"><Save size={16} />{submitting ? 'Saving...' : 'Confirm & Record Entry →'}</button>
+              <button type="submit" disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black tracking-[0.08em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60"><Save size={16} />{submitting ? 'Saving...' : 'Confirm & Record Entry ->'}</button>
             </div>
           </div>
 
@@ -466,168 +536,79 @@ const StockInwardSection = () => {
               <div className="flex items-center justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Live Bill Preview</p><h4 className="mt-2 text-xl font-black text-white">Instant purchase snapshot</h4></div><div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Auto updates</div></div>
               <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
                 <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Supplier</p><p className="mt-2 text-lg font-black text-white">{form.supplierName || 'Supplier name'}</p><p className="mt-1 text-sm text-slate-400">{form.supplierPhone || 'Phone number pending'}</p></div><div className="text-right"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill No</p><p className="mt-2 text-sm font-bold text-white">{form.billNumber || 'Draft'}</p><p className="mt-1 text-xs text-slate-500">{form.date || getToday()}</p></div></div>
-                <div className="space-y-4 py-4">
-                  <div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product</p><p className="mt-2 text-base font-black text-white">{selectedProduct?.name || 'Select product'}</p></div><div className="text-right"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Base Cost</p><p className="mt-2 text-base font-black text-white">{formatPrice(totalCost)}</p></div></div>
-                  <div className="grid grid-cols-2 gap-3 rounded-[1.25rem] border border-white/10 bg-white/[0.03] p-4 text-sm"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Qty</p><p className="mt-1 font-bold text-white">{quantity || 0}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Rate</p><p className="mt-1 font-bold text-white">{formatPrice(costPrice)}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Charges</p><p className="mt-1 font-bold text-white">{formatPrice(extraChargesTotal)}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Status</p><p className="mt-1 font-bold text-white">{form.paymentStatus}</p></div></div>
-                </div>
-                <div className="space-y-3 border-t border-white/10 pt-4"><div className="flex items-center justify-between text-sm text-slate-300"><span>Extra charges</span><span className="font-bold">{formatPrice(extraChargesTotal)}</span></div><div className="flex items-center justify-between text-base text-amber-200"><span className="font-black uppercase tracking-[0.14em]">Final Total</span><span className="text-xl font-black">{formatPrice(finalTotalCost)}</span></div></div>
+                <div className="space-y-3 py-4">{items.map((item, index) => (<div key={item.id} className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.15rem] border border-white/10 bg-white/[0.03] px-3 py-3"><div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary-500/10 text-xs font-black text-primary-200">{index + 1}</div><div className="min-w-0"><p className="truncate text-sm font-bold text-white">{item.productName || 'Select product'}</p><p className="mt-1 text-xs text-slate-500">{item.quantityValue} x {formatPrice(item.costPriceValue)}</p></div><p className="text-sm font-black text-primary-100">{formatPrice(item.lineTotal)}</p></div>))}</div>
+                <div className="grid grid-cols-2 gap-3 rounded-[1.25rem] border border-white/10 bg-white/[0.03] p-4 text-sm"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Products</p><p className="mt-1 font-bold text-white">{itemCount}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Units</p><p className="mt-1 font-bold text-white">{totalUnits}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Charges</p><p className="mt-1 font-bold text-white">{formatPrice(extraChargesTotal)}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Status</p><p className="mt-1 font-bold text-white">{form.paymentStatus}</p></div></div>
+                <div className="space-y-3 border-t border-white/10 pt-4"><div className="flex items-center justify-between text-sm text-slate-300"><span>Base cost</span><span className="font-bold">{formatPrice(baseCost)}</span></div><div className="flex items-center justify-between text-sm text-slate-300"><span>Extra charges</span><span className="font-bold">{formatPrice(extraChargesTotal)}</span></div><div className="flex items-center justify-between text-base text-amber-200"><span className="font-black uppercase tracking-[0.14em]">Final Total</span><span className="text-xl font-black">{formatPrice(finalTotalCost)}</span></div></div>
               </div>
             </section>
 
             <section className="rounded-[1.75rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.95)] md:p-6">
               <div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">Live Calculations</p><h4 className="mt-2 text-xl font-black text-white">Stock + cash position</h4></div>
-              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300"><PackagePlus size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Current Stock</p><p className="mt-2 text-2xl font-black text-white">{selectedProduct?.countInStock || 0}</p></div>
-                <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300"><CalendarDays size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">New Stock</p><p className="mt-2 text-2xl font-black text-white">{(selectedProduct?.countInStock || 0) + quantity}</p></div>
-                <div className="rounded-[1.3rem] border border-emerald-500/20 bg-emerald-500/10 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300"><Wallet size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-200">Paid</p><p className="mt-2 text-2xl font-black text-emerald-100">{formatPrice(paidAmount)}</p></div>
-                <div className="rounded-[1.3rem] border border-red-500/20 bg-red-500/10 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-500/15 text-red-300"><ReceiptText size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-red-200">Pending</p><p className="mt-2 text-2xl font-black text-red-100">{formatPrice(pendingAmount)}</p></div>
-              </div>
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300"><PackagePlus size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Products</p><p className="mt-2 text-2xl font-black text-white">{itemCount}</p></div><div className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500/15 text-primary-300"><CalendarDays size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Units Added</p><p className="mt-2 text-2xl font-black text-white">{totalUnits}</p></div><div className="rounded-[1.3rem] border border-emerald-500/20 bg-emerald-500/10 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300"><Wallet size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-200">Paid</p><p className="mt-2 text-2xl font-black text-emerald-100">{formatPrice(paidAmount)}</p></div><div className="rounded-[1.3rem] border border-red-500/20 bg-red-500/10 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-500/15 text-red-300"><ReceiptText size={18} /></div><p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-red-200">Pending</p><p className="mt-2 text-2xl font-black text-red-100">{formatPrice(pendingAmount)}</p></div></div>
             </section>
           </aside>
         </form>
       </section>
-
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl">
         <div className="flex flex-col gap-4 border-b border-white/10 p-6 md:flex-row md:items-center md:justify-between md:p-8">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Purchase History</p>
-            <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Stock Inward Entries</h3>
-          </div>
-          <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-            {loading ? 'Loading history...' : `${entries.length} visible entries`}
-          </div>
+          <div><p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Purchase History</p><h3 className="mt-2 text-2xl font-black tracking-tight text-white">Stock Inward Entries</h3></div>
+          <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{loading ? 'Loading history...' : `${entries.length} visible entries`}</div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-[1300px] text-left">
-            <thead>
-              <tr className="bg-white/[0.02] text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">
-                <th className="px-6 py-5">Date</th>
-                <th className="px-6 py-5">Supplier</th>
-                <th className="px-6 py-5">Bill</th>
-                <th className="px-6 py-5">Product</th>
-                <th className="px-6 py-5 text-center">Qty</th>
-                <th className="px-6 py-5 text-center">Cost Price</th>
-                <th className="px-6 py-5 text-center">Final Total</th>
-                <th className="px-6 py-5 text-center">Payment</th>
-                <th className="px-6 py-5 text-center">Paid</th>
-                <th className="px-6 py-5 text-center">Pending</th>
-                <th className="px-6 py-5">Notes</th>
-                <th className="px-6 py-5 text-right">Actions</th>
-              </tr>
-            </thead>
+            <thead><tr className="bg-white/[0.02] text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500"><th className="px-6 py-5">Date</th><th className="px-6 py-5">Supplier</th><th className="px-6 py-5">Bill</th><th className="px-6 py-5">Products</th><th className="px-6 py-5 text-center">Qty</th><th className="px-6 py-5 text-center">Cost</th><th className="px-6 py-5 text-center">Final Total</th><th className="px-6 py-5 text-center">Payment</th><th className="px-6 py-5 text-center">Paid</th><th className="px-6 py-5 text-center">Pending</th><th className="px-6 py-5">Notes</th><th className="px-6 py-5 text-right">Actions</th></tr></thead>
             <tbody className="divide-y divide-white/5">
-              {!loading && entries.length === 0 && (
-                <tr>
-                  <td colSpan="12" className="px-6 py-12 text-center text-sm text-slate-500">
-                    No stock inward entries yet. Create your first purchase entry to update inventory.
-                  </td>
-                </tr>
-              )}
-
-              {entries.map((entry) => (
-                <tr key={entry._id} className="transition-colors hover:bg-white/[0.03]">
-                  <td className="px-6 py-5 text-sm text-slate-300">{formatStockInwardBillDate(entry.date)}</td>
-                  <td className="px-6 py-5">
-                    <p className="font-bold text-white">{entry.supplierName}</p>
-                    <p className="mt-1 text-xs text-slate-500">{entry.supplierPhone || 'No phone added'}</p>
-                  </td>
-                  <td className="px-6 py-5 text-sm font-semibold text-slate-300">{entry.billNumber || '-'}</td>
-                  <td className="px-6 py-5">
-                    <p className="font-bold text-white">{entry.product?.name || '-'}</p>
-                    <p className="mt-1 text-xs text-slate-500">Latest stock: {entry.product?.countInStock ?? '-'}</p>
-                  </td>
-                  <td className="px-6 py-5 text-center text-sm font-semibold text-slate-300">{entry.quantity}</td>
-                  <td className="px-6 py-5 text-center text-sm font-bold text-white">{formatPrice(entry.costPrice)}</td>
-                  <td className="px-6 py-5 text-center text-sm font-black text-primary-300">{formatPrice(entry.finalTotalCost)}</td>
-                  <td className="px-6 py-5 text-center">
-                    <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] ${entry.paymentStatus === 'Paid' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : entry.paymentStatus === 'Partial' ? 'border-sky-500/20 bg-sky-500/10 text-sky-300' : 'border-amber-500/20 bg-amber-500/10 text-amber-300'}`}>
-                      {entry.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center text-sm font-semibold text-slate-300">{formatPrice(entry.paidAmount)}</td>
-                  <td className="px-6 py-5 text-center text-sm font-semibold text-amber-300">{formatPrice(entry.pendingAmount)}</td>
-                  <td className="px-6 py-5 text-sm text-slate-400">{entry.notes || '-'}</td>
-                  <td className="px-6 py-5 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <button type="button" onClick={() => setActiveBill(entry)} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
-                        <FileText size={14} />
-                        View Bill
-                      </button>
-                      <button type="button" onClick={() => openBillWindow(entry, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
-                        <Printer size={14} />
-                        Print Bill
-                      </button>
-                      <button type="button" onClick={() => openBillWindow(entry, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary-200 transition-all hover:bg-primary-500/15">
-                        <ReceiptText size={14} />
-                        Download PDF
-                      </button>
-                      <button type="button" onClick={() => handleEdit(entry)} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
-                        <CalendarDays size={14} />
-                        Edit
-                      </button>
-                      <button type="button" onClick={() => handleDelete(entry._id)} className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-red-300 transition-all hover:bg-red-500/15">
-                        <X size={14} />
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {!loading && entries.length === 0 && <tr><td colSpan="12" className="px-6 py-12 text-center text-sm text-slate-500">No stock inward entries yet. Create your first purchase entry to update inventory.</td></tr>}
+              {entries.map((entry) => {
+                const entryItems = getEntryItems(entry);
+                const productSummary = getEntryProductSummary(entry);
+                return (
+                  <tr key={entry._id} className="transition-colors hover:bg-white/[0.03]">
+                    <td className="px-6 py-5 text-sm text-slate-300">{formatStockInwardBillDate(entry.date)}</td>
+                    <td className="px-6 py-5"><p className="font-bold text-white">{entry.supplierName}</p><p className="mt-1 text-xs text-slate-500">{entry.supplierPhone || 'No phone added'}</p></td>
+                    <td className="px-6 py-5 text-sm font-semibold text-slate-300">{entry.billNumber || '-'}</td>
+                    <td className="px-6 py-5"><p className="font-bold text-white">{productSummary.primaryLabel}</p><p className="mt-1 text-xs text-slate-500">{productSummary.secondaryLabel}</p></td>
+                    <td className="px-6 py-5 text-center text-sm font-semibold text-slate-300">{productSummary.totalQuantity}</td>
+                    <td className="px-6 py-5 text-center text-sm font-bold text-white">{entryItems.length > 1 ? `${entryItems.length} lines` : formatPrice(entryItems[0]?.costPrice || entry.costPrice || 0)}</td>
+                    <td className="px-6 py-5 text-center text-sm font-black text-primary-300">{formatPrice(entry.finalTotalCost)}</td>
+                    <td className="px-6 py-5 text-center"><span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] ${entry.paymentStatus === 'Paid' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : entry.paymentStatus === 'Partial' ? 'border-sky-500/20 bg-sky-500/10 text-sky-300' : 'border-amber-500/20 bg-amber-500/10 text-amber-300'}`}>{entry.paymentStatus}</span></td>
+                    <td className="px-6 py-5 text-center text-sm font-semibold text-slate-300">{formatPrice(entry.paidAmount)}</td>
+                    <td className="px-6 py-5 text-center text-sm font-semibold text-amber-300">{formatPrice(entry.pendingAmount)}</td>
+                    <td className="px-6 py-5 text-sm text-slate-400">{entry.notes || '-'}</td>
+                    <td className="px-6 py-5 text-right"><div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setActiveBill(entry)} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"><FileText size={14} />View Bill</button><button type="button" onClick={() => openBillWindow(entry, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"><Printer size={14} />Print Bill</button><button type="button" onClick={() => openBillWindow(entry, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary-200 transition-all hover:bg-primary-500/15"><ReceiptText size={14} />Download PDF</button><button type="button" onClick={() => handleEdit(entry)} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"><CalendarDays size={14} />Edit</button><button type="button" onClick={() => handleDelete(entry._id)} className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-red-300 transition-all hover:bg-red-500/15"><X size={14} />Delete</button></div></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </section>
 
+      {showCreateProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#10151d] shadow-[0_32px_100px_-40px_rgba(0,0,0,1)]">
+            <div className="flex items-center justify-between border-b border-white/10 p-6"><div><p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Quick Product Create</p><h3 className="mt-2 text-2xl font-black tracking-tight text-white">Add new inventory product</h3></div><button type="button" onClick={() => setShowCreateProductModal(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]"><X size={18} /></button></div>
+            <form onSubmit={handleQuickProductCreate} className="space-y-6 p-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label><input type="text" value={quickProductForm.name} onChange={(event) => setQuickProductForm((current) => ({ ...current, name: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" placeholder="Enter product name" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Category</label><select value={quickProductForm.category} onChange={(event) => setQuickProductForm((current) => ({ ...current, category: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required>{PRODUCT_CATEGORY_OPTIONS.map((option) => (<option key={option} value={option}>{option}</option>))}</select></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Selling Price</label><input type="number" min="0" step="0.01" value={quickProductForm.price} onChange={(event) => setQuickProductForm((current) => ({ ...current, price: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Cost Price</label><input type="number" min="0" step="0.01" value={quickProductForm.costPrice} onChange={(event) => setQuickProductForm((current) => ({ ...current, costPrice: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" required /></div>
+                <div className="space-y-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Stock</label><input type="number" min="0" step="1" value={quickProductForm.countInStock} onChange={(event) => setQuickProductForm((current) => ({ ...current, countInStock: event.target.value }))} className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40" /></div>
+                <div className="space-y-2 md:col-span-2"><label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Description</label><textarea rows="3" value={quickProductForm.description} onChange={(event) => setQuickProductForm((current) => ({ ...current, description: event.target.value }))} className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40" placeholder="Optional short description" /></div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowCreateProductModal(false)} className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">Cancel</button><button type="submit" disabled={creatingProduct} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black tracking-[0.08em] text-white transition-all hover:bg-primary-700 disabled:opacity-60"><Plus size={16} />{creatingProduct ? 'Creating...' : 'Create Product'}</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {activeBill && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm">
           <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d] shadow-[0_32px_100px_-40px_rgba(0,0,0,1)]">
-            <div className="flex flex-col gap-4 border-b border-white/10 p-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Bill Preview</p>
-                <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Purchase Bill</h3>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => openBillWindow(activeBill)} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
-                  <FileText size={16} />
-                  View Bill
-                </button>
-                <button type="button" onClick={() => openBillWindow(activeBill, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">
-                  <Printer size={16} />
-                  Print Bill
-                </button>
-                <button type="button" onClick={() => openBillWindow(activeBill, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl bg-primary-600 px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-primary-700">
-                  <ReceiptText size={16} />
-                  Download PDF
-                </button>
-                <button type="button" onClick={() => setActiveBill(null)} className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-bold text-red-300 transition-all hover:bg-red-500/15">
-                  <X size={16} />
-                  Close
-                </button>
-              </div>
-            </div>
-
-            <div className="max-h-[calc(92vh-110px)] overflow-y-auto p-6 md:p-8">
-              <div className="rounded-[2rem] border border-white/10 bg-[#151b24] p-6 md:p-8">
-                <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">K.S. Sports</p>
-                    <h4 className="mt-2 text-3xl font-black tracking-tight text-white">Supplier Purchase Bill</h4>
-                    <p className="mt-2 text-sm text-slate-400">Use Print or Download PDF to save this bill with your browser print dialog.</p>
-                  </div>
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill Number</p>
-                    <p className="mt-2 text-lg font-black text-white">{activeBill.billNumber || '-'}</p>
-                    <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-300">{formatStockInwardBillDate(activeBill.date)}</p>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <StockInwardBill entry={activeBill} />
-                </div>
-              </div>
-            </div>
+            <div className="flex flex-col gap-4 border-b border-white/10 p-6 md:flex-row md:items-center md:justify-between"><div><p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Bill Preview</p><h3 className="mt-2 text-2xl font-black tracking-tight text-white">Purchase Bill</h3></div><div className="flex flex-wrap gap-3"><button type="button" onClick={() => openBillWindow(activeBill)} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"><FileText size={16} />View Bill</button><button type="button" onClick={() => openBillWindow(activeBill, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"><Printer size={16} />Print Bill</button><button type="button" onClick={() => openBillWindow(activeBill, { autoPrint: true })} className="inline-flex items-center gap-2 rounded-2xl bg-primary-600 px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-primary-700"><ReceiptText size={16} />Download PDF</button><button type="button" onClick={() => setActiveBill(null)} className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-bold text-red-300 transition-all hover:bg-red-500/15"><X size={16} />Close</button></div></div>
+            <div className="max-h-[calc(92vh-110px)] overflow-y-auto p-6 md:p-8"><div className="rounded-[2rem] border border-white/10 bg-[#151b24] p-6 md:p-8"><div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary-300">K.S. Sports</p><h4 className="mt-2 text-3xl font-black tracking-tight text-white">Supplier Purchase Bill</h4><p className="mt-2 text-sm text-slate-400">Use Print or Download PDF to save this bill with your browser print dialog.</p></div><div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Bill Number</p><p className="mt-2 text-lg font-black text-white">{activeBill.billNumber || '-'}</p><p className="mt-3 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</p><p className="mt-2 text-sm font-semibold text-slate-300">{formatStockInwardBillDate(activeBill.date)}</p></div></div><div className="mt-8"><StockInwardBill entry={activeBill} /></div></div></div>
           </div>
         </div>
       )}

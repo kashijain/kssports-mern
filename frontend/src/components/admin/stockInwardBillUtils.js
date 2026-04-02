@@ -20,6 +20,30 @@ const escapeHtml = (value = '') =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+export const getStockInwardEntryItems = (entry = {}) => {
+  if (Array.isArray(entry.items) && entry.items.length) {
+    return entry.items.map((item, index) => ({
+      id: item._id || `item-${index}`,
+      productName: item.productName || item.product?.name || '-',
+      quantity: Number(item.quantity || 0),
+      costPrice: Number(item.costPrice || 0),
+      lineTotal: Number(item.lineTotal || 0) || Number(item.quantity || 0) * Number(item.costPrice || 0),
+    }));
+  }
+
+  if (entry.product) {
+    return [{
+      id: 'legacy-item',
+      productName: entry.productName || entry.product?.name || '-',
+      quantity: Number(entry.quantity || 0),
+      costPrice: Number(entry.costPrice || 0),
+      lineTotal: Number(entry.totalCost || 0) || Number(entry.quantity || 0) * Number(entry.costPrice || 0),
+    }];
+  }
+
+  return [];
+};
+
 export const getStockInwardBillRows = (entry) => [
   ['Total Cost', entry.totalCost],
   ['Transport Charges', entry.transportCharges],
@@ -32,15 +56,19 @@ export const getStockInwardBillRows = (entry) => [
 ];
 
 export const buildStockInwardBillHtml = (entry) => {
-  const invoiceRows = `
-    <tr>
-      <td>1</td>
-      <td>${escapeHtml(entry.product?.name || '-')}</td>
-      <td>${escapeHtml(entry.quantity ?? 0)}</td>
-      <td>${escapeHtml(formatPrice(entry.costPrice))}</td>
-      <td>${escapeHtml(formatPrice(entry.totalCost))}</td>
-    </tr>
-  `;
+  const invoiceRows = getStockInwardEntryItems(entry)
+    .map(
+      (item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(item.productName)}</td>
+          <td>${escapeHtml(item.quantity)}</td>
+          <td>${escapeHtml(formatPrice(item.costPrice))}</td>
+          <td>${escapeHtml(formatPrice(item.lineTotal))}</td>
+        </tr>
+      `
+    )
+    .join('');
 
   const summaryRows = getStockInwardBillRows(entry)
     .map(
@@ -84,88 +112,20 @@ export const buildStockInwardBillHtml = (entry) => {
         .sig-box{min-width:220px;text-align:center;}
         .sig-line{height:1px;background:#111827;margin-bottom:10px;}
         .thanks{margin-top:18px;font-size:12px;color:#4b5563;text-transform:uppercase;letter-spacing:.12em;}
-        @media print{
-          body{padding:0;background:#fff;}
-          .page{max-width:none;border:none;border-radius:0;}
-        }
+        @media print{body{padding:0;background:#fff;}.page{max-width:none;border:none;border-radius:0;}}
       </style>
     </head>
     <body>
       <div class="page">
         <div class="head">
           <div class="row">
-            <div>
-              <div class="brand">K.S. Sports</div>
-              <div class="sub">Premium Athletic Goods</div>
-              <div class="bill-title">Stock Inward Bill / Purchase Bill</div>
-            </div>
-            <div class="meta">
-              <div class="label">Bill Number</div>
-              <div class="value">${escapeHtml(entry.billNumber || '-')}</div>
-              <div class="label" style="margin-top:14px;">Date</div>
-              <div class="value">${escapeHtml(formatStockInwardBillDate(entry.date))}</div>
-            </div>
+            <div><div class="brand">K.S. Sports</div><div class="sub">Premium Athletic Goods</div><div class="bill-title">Stock Inward Bill / Purchase Bill</div></div>
+            <div class="meta"><div class="label">Bill Number</div><div class="value">${escapeHtml(entry.billNumber || '-')}</div><div class="label" style="margin-top:14px;">Date</div><div class="value">${escapeHtml(formatStockInwardBillDate(entry.date))}</div></div>
           </div>
         </div>
-
-        <div class="section">
-          <div class="party-grid">
-            <div class="cell">
-              <div class="label">Supplier Name</div>
-              <div class="value">${escapeHtml(entry.supplierName || '-')}</div>
-            </div>
-            <div class="cell">
-              <div class="label">Supplier Phone</div>
-              <div class="value">${escapeHtml(entry.supplierPhone || 'Not provided')}</div>
-            </div>
-            <div class="cell">
-              <div class="label">Address</div>
-              <div class="value">Not provided</div>
-            </div>
-            <div class="cell">
-              <div class="label">Payment Status</div>
-              <div class="value">${escapeHtml(entry.paymentStatus || '-')}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section" style="padding-top:0;">
-          <table>
-            <thead>
-              <tr>
-                <th>Sr. No.</th>
-                <th>Product Name</th>
-                <th>Quantity</th>
-                <th>Rate</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>${invoiceRows}</tbody>
-          </table>
-        </div>
-
-        <div class="section" style="padding-top:0;">
-          <div class="summary-wrap">
-            <div class="notes">
-              <div class="label">Notes</div>
-              <div class="value">${escapeHtml(entry.notes || 'No additional notes')}</div>
-              <div class="thanks">Thank you for supporting K.S. Sports procurement operations.</div>
-            </div>
-            <table>
-              <tbody>${summaryRows}</tbody>
-            </table>
-          </div>
-
-          <div class="signature">
-            <div style="font-size:12px;color:#4b5563;letter-spacing:.12em;text-transform:uppercase;">
-              This is a system generated inward bill for inventory records.
-            </div>
-            <div class="sig-box">
-              <div class="sig-line"></div>
-              <div class="label">Authorized Signature</div>
-            </div>
-          </div>
-        </div>
+        <div class="section"><div class="party-grid"><div class="cell"><div class="label">Supplier Name</div><div class="value">${escapeHtml(entry.supplierName || '-')}</div></div><div class="cell"><div class="label">Supplier Phone</div><div class="value">${escapeHtml(entry.supplierPhone || 'Not provided')}</div></div><div class="cell"><div class="label">Address</div><div class="value">Not provided</div></div><div class="cell"><div class="label">Payment Status</div><div class="value">${escapeHtml(entry.paymentStatus || '-')}</div></div></div></div>
+        <div class="section" style="padding-top:0;"><table><thead><tr><th>Sr. No.</th><th>Product Name</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${invoiceRows}</tbody></table></div>
+        <div class="section" style="padding-top:0;"><div class="summary-wrap"><div class="notes"><div class="label">Notes</div><div class="value">${escapeHtml(entry.notes || 'No additional notes')}</div><div class="thanks">Thank you for supporting K.S. Sports procurement operations.</div></div><table><tbody>${summaryRows}</tbody></table></div><div class="signature"><div style="font-size:12px;color:#4b5563;letter-spacing:.12em;text-transform:uppercase;">This is a system generated inward bill for inventory records.</div><div class="sig-box"><div class="sig-line"></div><div class="label">Authorized Signature</div></div></div></div>
       </div>
     </body>
   </html>`;

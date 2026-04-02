@@ -15,6 +15,7 @@ import {
   deleteStockInwardEntry,
   getStockInwardEntries,
   getStockInwardEntryById,
+  quickCreateStockInwardProduct,
   updateStockInwardEntry,
 } from '../controllers/stockInwardController.js';
 import { protect, seller } from '../middlewares/authMiddleware.js';
@@ -53,6 +54,8 @@ router
   .route('/stock-inward')
   .get(protect, seller, getStockInwardEntries)
   .post(protect, seller, createStockInward);
+
+router.post('/stock-inward/products', protect, seller, quickCreateStockInwardProduct);
 
 router
   .route('/stock-inward/:id')

@@ -1,5 +1,38 @@
 import mongoose from 'mongoose';
 
+const stockInwardItemSchema = new mongoose.Schema(
+  {
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true,
+    },
+    productName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    costPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    lineTotal: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  {
+    _id: true,
+  }
+);
+
 const stockInwardSchema = new mongoose.Schema(
   {
     date: {
@@ -21,20 +54,27 @@ const stockInwardSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    items: {
+      type: [stockInwardItemSchema],
+      default: [],
+    },
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
-      required: true,
+      required: false,
+      default: null,
     },
     quantity: {
       type: Number,
-      required: true,
-      min: 1,
+      required: false,
+      min: 0,
+      default: 0,
     },
     costPrice: {
       type: Number,
-      required: true,
+      required: false,
       min: 0,
+      default: 0,
     },
     totalCost: {
       type: Number,
@@ -101,6 +141,7 @@ const stockInwardSchema = new mongoose.Schema(
 stockInwardSchema.index({ date: -1, createdAt: -1 });
 stockInwardSchema.index({ supplierName: 1 });
 stockInwardSchema.index({ product: 1, createdAt: -1 });
+stockInwardSchema.index({ 'items.product': 1, createdAt: -1 });
 
 const StockInward = mongoose.model('StockInward', stockInwardSchema);
 
