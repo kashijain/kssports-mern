@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { BarChart3, CheckCircle2, Clock, Edit, FileSpreadsheet, LayoutDashboard, Package, Plus, ReceiptIndianRupee, Search, ShoppingBag, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
+import { BarChart3, Bell, CheckCircle2, ChevronRight, Clock, Edit, FileSpreadsheet, HelpCircle, LayoutDashboard, LogOut, Menu, Package, Plus, ReceiptIndianRupee, Search, Settings, ShoppingBag, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useAuthStore, useOrderStore, useProductStore } from '../store/useStore';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
@@ -120,6 +120,7 @@ const getResolvedProductName=(form)=>{
   return form.productNameOption.trim();
 };
 const emptyForm={name:'',productNameOption:'',customProductName:'',price:'',brand:'',category:'',countInStock:'',description:'',codAvailable:true,features:[createFeature()],specifications:[createSpec()]};
+const DASHBOARD_WEEK_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 const Dashboard=()=>{
   const navigate=useNavigate();
@@ -137,6 +138,7 @@ const Dashboard=()=>{
   const [images,setImages]=useState([]);
   const [saving,setSaving]=useState(false);
   const [generatingDetails,setGeneratingDetails]=useState(false);
+  const [sidebarOpen,setSidebarOpen]=useState(false);
   const isSeller=userInfo?.role==='seller';
   const isEdit=Boolean(id);
   const tab=!isSeller
@@ -163,8 +165,21 @@ const Dashboard=()=>{
                 ?'inventory'
                 :'overview';
 
-  useEffect(()=>{ if(isSeller){ (tab==='orders'?fetchAllOrders():fetchProducts()).catch(()=>{}); } else { fetchMyOrders().catch(()=>{}); } },[isSeller,tab,fetchAllOrders,fetchMyOrders,fetchProducts]);
+  useEffect(()=>{
+    if(isSeller){
+      if(tab==='overview'){
+        Promise.all([fetchProducts(),fetchAllOrders()]).catch(()=>{});
+      }else if(tab==='orders'){
+        fetchAllOrders().catch(()=>{});
+      }else{
+        fetchProducts().catch(()=>{});
+      }
+    } else {
+      fetchMyOrders().catch(()=>{});
+    }
+  },[isSeller,tab,fetchAllOrders,fetchMyOrders,fetchProducts]);
   useEffect(()=>{ if(isSeller&&isEdit&&id){ fetchProductById(id).catch(e=>{ toast.error(e.message||'Failed to load product'); navigate('/admin/manage-products',{replace:true});}); } else { setForm(emptyForm);} },[isSeller,isEdit,id,fetchProductById,navigate]);
+  useEffect(()=>{ setSidebarOpen(false); },[location.pathname]);
   useEffect(()=>{
     if(isEdit&&product?._id===id){
       const { productNameOption, customProductName }=getProductNameFields(product.name);
@@ -218,6 +233,48 @@ const Dashboard=()=>{
   const canManageSelectedProduct=selectedProductOption&&selectedProductOption!==OTHER_PRODUCT_OPTION;
   const currentSpecificationOptions=getSpecificationOptionsForCategory(form.category,specificationOptionsMap);
   if(!userInfo) return null;
+
+  const totalSales=orders.reduce((sum,order)=>sum+Number(order.totalPrice||0),0);
+  const pendingAmount=orders.reduce((sum,order)=>!order.isPaid?sum+Number(order.totalPrice||0):sum,0);
+  const paidSales=orders.reduce((sum,order)=>order.isPaid?sum+Number(order.totalPrice||0):sum,0);
+  const netProfitEstimate=paidSales*0.22;
+  const todayLabel=new Intl.DateTimeFormat('en-IN',{ day:'2-digit', month:'short', year:'numeric' }).format(new Date());
+  const pageTitleMap={
+    overview:'Dashboard',
+    inventory:'Inventory',
+    form:'Inventory',
+    edit:'Inventory',
+    'upload-stock-sheet':'Upload Stock Sheet',
+    'offline-sales':'Offline Sales',
+    'bat-repair':'Bat Repair',
+    expenses:'Expenses',
+    'business-summary':'Summary',
+    'sales-report':'Sales Report',
+    orders:'Orders'
+  };
+  const pageTitle=pageTitleMap[tab] || 'Dashboard';
+  const overviewCards=[
+    { label:'Total Sales', value:formatPrice(totalSales), note:`${orders.length} recorded orders`, accent:'text-emerald-300', tone:'bg-emerald-500/15', icon:ReceiptIndianRupee },
+    { label:'Net Profit', value:formatPrice(netProfitEstimate), note:'Estimated from paid order flow', accent:'text-sky-300', tone:'bg-sky-500/15', icon:Wallet },
+    { label:'Pending Amount', value:formatPrice(pendingAmount), note:`${orders.filter(order=>!order.isPaid).length} payments awaiting`, accent:'text-amber-300', tone:'bg-amber-500/15', icon:Clock },
+    { label:'Total Orders', value:String(orders.length), note:`${orders.filter(order=>order.isDelivered).length} delivered so far`, accent:'text-rose-300', tone:'bg-rose-500/15', icon:ShoppingBag }
+  ];
+  const weeklySalesData=DASHBOARD_WEEK_DAYS.map((day,dayIndex)=>{
+    const amount=orders.reduce((sum,order)=>{
+      if(!order.createdAt) return sum;
+      const orderDay=new Date(order.createdAt).getDay();
+      const normalizedDay=orderDay===0?6:orderDay-1;
+      return normalizedDay===dayIndex?sum+Number(order.totalPrice||0):sum;
+    },0);
+    return { day, amount };
+  });
+  const peakWeeklySales=Math.max(...weeklySalesData.map(item=>item.amount),1);
+  const topInventoryItems=[...products]
+    .sort((a,b)=>(Number(b.price||0)*Math.max(Number(b.countInStock||0),1))-(Number(a.price||0)*Math.max(Number(a.countInStock||0),1)))
+    .slice(0,4);
+  const recentTransactions=[...orders]
+    .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
+    .slice(0,5);
 
   const onLogout=async()=>{ await logout(); navigate('/login',{replace:true}); };
   const onDelete=async(pid)=>{ if(!window.confirm('Delete this product permanently?')) return; try{ await deleteProduct(pid); toast.success('Product deleted'); }catch(e){ toast.error(e.message||'Delete failed'); } };
@@ -500,35 +557,158 @@ const Dashboard=()=>{
   };
 
   const sidebar=isSeller?[
-    ['overview','/admin',LayoutDashboard,'Overview'],
-    ['business-summary','/admin/business-summary',BarChart3,'Business Summary'],
+    ['overview','/admin',LayoutDashboard,'Dashboard'],
     ['inventory','/admin/manage-products',Package,'Inventory'],
-    ['form','/admin/add-product',Plus,isEdit?'Edit Product':'Add Product'],
-    ['upload-stock-sheet','/admin/upload-stock-sheet',FileSpreadsheet,'Upload Stock Sheet'],
     ['offline-sales','/admin/offline-sales',ReceiptIndianRupee,'Offline Sales'],
+    ['business-summary','/admin/business-summary',BarChart3,'Summary'],
+    ['orders','/admin/orders',Users,'Orders'],
+    ['inventory-tools','/admin/add-product',Plus,isEdit?'Edit Product':'Add Product'],
+    ['upload-stock-sheet','/admin/upload-stock-sheet',FileSpreadsheet,'Upload Stock Sheet'],
     ['bat-repair','/admin/bat-repair',Wrench,'Bat Repair'],
     ['expenses','/admin/expenses',Wallet,'Expenses'],
-    ['sales-report','/admin/sales-report',BarChart3,'Sales Report'],
-    ['orders','/admin/orders',Users,'Orders']
+    ['sales-report','/admin/sales-report',BarChart3,'Sales Report']
   ]:[['orders','/profile',ShoppingBag,'Order History']];
 
-  return <div className="min-h-screen bg-transparent pb-16"><div className="container-bound flex flex-col gap-8 lg:flex-row lg:gap-12">
-    <aside className="w-full shrink-0 lg:w-72"><div className="panel-premium sticky top-28 p-6">
-      <div className="flex items-center gap-4 mb-8 pb-8 border-b border-slate-100 dark:border-dark-border"><div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-600 to-red-400 flex items-center justify-center text-white text-2xl font-black">{userInfo.name?.charAt(0).toUpperCase()}</div><div><h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">{userInfo.name}</h3><p className="text-xs font-bold text-primary-600 uppercase tracking-widest mt-1">{isSeller?'Approved Seller':'Customer Account'}</p></div></div>
-      <div className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">{isSeller ? 'Seller Console' : 'Account Center'}</p>
-        <h2 className="mt-3 text-2xl font-black text-slate-900 dark:text-white">{userInfo?.name}</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{isSeller ? 'Inventory, orders, reports, and daily operations.' : 'Track your orders and account activity.'}</p>
+  return <div className="min-h-screen bg-transparent pb-16">
+    <div className="container-bound">
+      <div className="mb-6 flex items-center justify-between gap-3 lg:hidden">
+        <button onClick={()=>setSidebarOpen(prev=>!prev)} className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-[#121720] text-white shadow-[0_20px_40px_-24px_rgba(0,0,0,0.9)]">
+          <Menu size={20}/>
+        </button>
+        <div className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#121720] px-4 py-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-primary-300">K.S. Sports</p>
+          <p className="mt-1 truncate text-sm font-semibold text-white">{pageTitle}</p>
+        </div>
       </div>
-      <div className="space-y-2">{sidebar.map((item)=>{const key=item[0]; const path=item[1]; const Icon=item[2]; const label=item[3]; return <button key={key} onClick={()=>navigate(path)} className={`w-full flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-bold transition-all ${tab===key||((key==='form')&&isEdit)?'bg-slate-950 text-white shadow-[0_18px_38px_-22px_rgba(15,23,42,0.75)] dark:bg-white dark:text-slate-900':'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'}`}><Icon size={18}/>{label}</button>;})}</div>
-      <button onClick={onLogout} className="w-full mt-8 pt-8 border-t border-slate-100 dark:border-dark-border text-red-500 font-bold text-sm">Sign Out</button>
-    </div></aside>
-    <main className="min-w-0 flex-1 space-y-8">
-      <section className="panel-premium p-6 md:p-8"><h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{isSeller?'Store Operations':'Your Orders'}</h2><p className="text-slate-500 dark:text-slate-400">{isSeller?'Manage products, monitor orders, and keep the catalog reliable.':'Track your purchases, payment status, and delivery progress.'}</p></section>
 
-      {isSeller&&tab==='overview'&&<section className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">{[[Package,'Total Products',products.length],[ShoppingBag,'Pending Orders',orders.filter(o=>!o.isDelivered).length],[CheckCircle2,'Delivered Orders',orders.filter(o=>o.isDelivered).length],[Users,'Seller Accounts',2]].map((item)=>{const Icon=item[0]; const label=item[1]; const value=item[2]; return <div key={label} className="metric-card"><div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-900/20"><Icon size={22}/></div><p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p><p className="text-3xl font-black text-slate-900 dark:text-white">{value}</p></div>;})}</section>}
+      <div className="flex flex-col gap-8 lg:flex-row lg:gap-10">
+        <aside className={`${sidebarOpen?'block':'hidden'} w-full shrink-0 lg:block lg:w-[290px]`}>
+          <div className="sticky top-24 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0f131b]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.18),transparent_58%)]"></div>
+            <div className="relative">
+              <div className="flex items-center gap-3 pb-7">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_18px_40px_-20px_rgba(220,38,38,0.75)]">KS</div>
+                <div>
+                  <p className="text-lg font-black uppercase tracking-tight text-white">K.S. Sports</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-slate-500">Seller Console</p>
+                </div>
+              </div>
 
-      {isSeller&&(tab==='overview'||tab==='inventory')&&<section className="table-shell"><div className="p-6 md:p-8 border-b border-slate-100 dark:border-dark-border flex flex-col sm:flex-row justify-between gap-4"><div><h3 className="text-2xl font-bold text-slate-900 dark:text-white">Product Inventory</h3><p className="text-slate-500 dark:text-slate-400 mt-1">Products are loaded directly from MongoDB and stay persistent across refresh and relogin.</p></div><div className="relative w-full sm:w-72"><Search className="absolute left-3.5 top-3 text-slate-400" size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products..." className="input-premium pl-10 pr-4 py-3"/></div></div><div className="overflow-x-auto"><table className="table-premium"><thead><tr><th>Product</th><th className="text-center">Price</th><th className="text-center">Category</th><th className="text-center">Stock</th><th className="text-right">Actions</th></tr></thead><tbody>{filtered.map(item=><tr key={item._id}><td><div className="flex items-center gap-4"><img src={getPrimaryProductImage(item)} alt={item.name} className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-dark-border shadow-sm ring-1 ring-slate-100 dark:ring-dark-border" onError={e=>{e.currentTarget.src=getPrimaryProductImage({});}}/><div><p className="font-bold text-slate-900 dark:text-white">{item.name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{item.brand}</p></div></div></td><td className="text-center"><div className="inline-flex flex-col items-center"><span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Selling Price</span><span className="text-lg font-extrabold text-slate-900 dark:text-white">{formatPrice(item.price)}</span></div></td><td className="text-center"><span className="bg-slate-100 dark:bg-dark-bg text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border uppercase tracking-wider">{item.category}</span></td><td className="text-center">{item.countInStock>0?<span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-3.5 py-2 rounded-full text-xs border border-emerald-200 dark:border-emerald-900/40 inline-flex items-center gap-1.5 shadow-sm"><CheckCircle2 size={14}/>{item.countInStock} in stock</span>:<span className="text-red-600 dark:text-red-300 font-bold bg-red-50 dark:bg-red-900/20 px-3.5 py-2 rounded-full text-xs border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1.5 shadow-sm"><XCircle size={14}/>Out of stock</span>}</td><td className="text-right"><div className="flex items-center justify-end gap-2"><button onClick={()=>navigate(`/admin/edit-product/${item._id}`)} className="p-3 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl border border-slate-200 dark:border-dark-border transition-all shadow-sm hover:shadow-md"><Edit size={16}/></button><button onClick={()=>onDelete(item._id)} className="p-3 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl border border-slate-200 dark:border-dark-border transition-all shadow-sm hover:shadow-md"><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div></section>}
+              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-600 to-red-400 text-xl font-black text-white">
+                    {userInfo.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-bold text-white">{userInfo.name}</p>
+                    <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">{isSeller?'Premium Seller':'Customer Account'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <p className="mb-3 px-2 text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500">Navigation</p>
+                <div className="space-y-2">{sidebar.map((item,index)=>{const key=item[0]; const path=item[1]; const Icon=item[2]; const label=item[3]; const active=tab===key||((key==='inventory-tools')&&(tab==='form'||tab==='edit')); return <button key={`${key}-${index}`} onClick={()=>navigate(path)} className={`group flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left text-sm font-bold transition-all ${active?'border-primary-500/40 bg-primary-600 text-white shadow-[0_20px_44px_-24px_rgba(220,38,38,0.75)]':'border-transparent bg-transparent text-slate-300 hover:border-white/10 hover:bg-white/[0.04] hover:text-white'}`}><span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${active?'bg-white/15 text-white':'bg-white/[0.04] text-slate-400 group-hover:text-white'}`}><Icon size={18}/></span><span className="flex-1">{label}</span><ChevronRight size={16} className={active?'text-white':'text-slate-600 group-hover:text-slate-300'}/></button>;})}</div>
+              </div>
+
+              <div className="mt-8 rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Quick Support</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Need help with stock, orders, or reports? Keep your storefront moving with faster admin actions.</p>
+                <div className="mt-4 space-y-2">
+                  <button className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white transition-all hover:border-white/20 hover:bg-white/[0.06]"><HelpCircle size={18}/>Support</button>
+                  <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition-all hover:bg-red-500/15"><LogOut size={18}/>Logout</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+        <main className="min-w-0 flex-1 space-y-8">
+          <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 shadow-[0_28px_80px_-44px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+            <div className="flex flex-col gap-5 border-b border-white/10 px-5 py-5 md:px-8 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-primary-300">K.S. Sports Dashboard</p>
+                <h1 className="mt-2 text-3xl font-black uppercase tracking-tight text-white md:text-4xl">{isSeller ? (tab==='overview' ? 'Performance Hub' : pageTitle) : 'Your Orders'}</h1>
+                <p className="mt-2 text-sm text-slate-400">{isSeller ? `Live operational view for ${todayLabel}. Monitor inventory, sales, and order flow in one place.` : 'Track your purchases, payment status, and delivery progress.'}</p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 sm:w-72">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={17}/>
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search orders, stock..." className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] pl-11 pr-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06] hover:text-white"><Bell size={18}/></button>
+                  <button className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06] hover:text-white"><Settings size={18}/></button>
+                  <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 text-sm font-black text-white">{userInfo.name?.charAt(0).toUpperCase()}</div>
+                    <div className="hidden sm:block">
+                      <p className="text-sm font-bold text-white">{userInfo.name}</p>
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{pageTitle}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+      {isSeller&&tab==='overview'&&(
+        <>
+          <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {overviewCards.map((item)=>{const Icon=item.icon; return <div key={item.label} className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_26px_70px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-white/15"><div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-primary-600/10 blur-3xl"></div><div className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl ${item.tone} ${item.accent}`}><Icon size={22}/></div><p className="text-[11px] font-bold uppercase tracking-[0.26em] text-slate-500">{item.label}</p><p className="mt-4 text-3xl font-black tracking-tight text-white">{item.value}</p><p className="mt-2 text-sm text-slate-400">{item.note}</p></div>;})}
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+            <div className="rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_26px_70px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-7">
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary-300">Revenue Trends</p>
+                  <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Weekly Sales Performance</h3>
+                </div>
+                <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1 text-xs font-bold uppercase tracking-[0.2em]">
+                  <span className="rounded-full bg-white px-4 py-2 text-slate-900">Weekly</span>
+                  <span className="px-4 py-2 text-slate-500">Monthly</span>
+                </div>
+              </div>
+              <div className="flex h-[320px] items-end gap-3">
+                {weeklySalesData.map((item)=><div key={item.day} className="flex flex-1 flex-col items-center gap-4"><div className="flex h-full w-full items-end justify-center rounded-[1.6rem] bg-white/[0.03] px-2 py-3"><div className="w-full rounded-[1rem] bg-gradient-to-t from-primary-600 via-rose-400 to-[#ffd2d2] shadow-[0_18px_38px_-20px_rgba(220,38,38,0.8)]" style={{ height: `${Math.max((item.amount/peakWeeklySales)*100,12)}%` }}></div></div><div className="text-center"><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{item.day}</p><p className="mt-1 text-xs font-semibold text-slate-300">{formatPrice(item.amount)}</p></div></div>)}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_26px_70px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary-300">Top Items</p>
+                  <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Best Sellers</h3>
+                </div>
+                <button onClick={()=>navigate('/admin/manage-products')} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all hover:border-white/20 hover:bg-white/[0.06]">View Inventory</button>
+              </div>
+              <div className="space-y-4">
+                {topInventoryItems.map((item)=><div key={item._id} className="flex items-center gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-3"><img src={getPrimaryProductImage(item)} alt={item.name} className="h-16 w-16 rounded-2xl object-cover" onError={e=>{e.currentTarget.src=getPrimaryProductImage({});}}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-white">{item.name}</p><p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-500">{item.category || 'Gear'} / {item.countInStock || 0} in stock</p></div><div className="text-right"><p className="text-sm font-black text-white">{formatPrice(item.price)}</p><p className="mt-1 text-xs font-semibold text-emerald-300">{Math.max(Number(item.countInStock||0),0)} units</p></div></div>)}
+                {!topInventoryItems.length&&<div className="rounded-[1.5rem] border border-dashed border-white/10 px-4 py-10 text-center text-sm text-slate-500">Top items will appear here once products are available.</div>}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-white/10 bg-[#10151d]/95 shadow-[0_26px_70px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+            <div className="flex flex-col gap-3 border-b border-white/10 px-6 py-6 md:flex-row md:items-center md:justify-between md:px-8">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary-300">Transactions</p>
+                <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Recent Transactions</h3>
+              </div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Showing latest order flow</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left">
+                <thead><tr className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500"><th className="px-6 py-4 md:px-8">Order ID</th><th className="px-6 py-4">Customer Name</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Total</th><th className="px-6 py-4 text-right md:px-8">Action</th></tr></thead>
+                <tbody className="divide-y divide-white/5">{recentTransactions.map((order)=><tr key={order._id} className="text-sm text-slate-300"><td className="px-6 py-5 md:px-8"><p className="font-bold text-white">#{order._id.slice(-8).toUpperCase()}</p><p className="mt-1 text-xs text-slate-500">{order.createdAt?.substring(0,10)}</p></td><td className="px-6 py-5"><p className="font-semibold text-white">{order.user?.name || 'Customer'}</p><p className="mt-1 text-xs text-slate-500">{order.user?.email || 'Order account'}</p></td><td className="px-6 py-5"><span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] ${order.isDelivered?'border-emerald-500/20 bg-emerald-500/10 text-emerald-300':order.isPaid?'border-sky-500/20 bg-sky-500/10 text-sky-300':'border-amber-500/20 bg-amber-500/10 text-amber-300'}`}>{order.isDelivered ? 'Delivered' : order.isPaid ? 'Processing' : 'Pending'}</span></td><td className="px-6 py-5 text-right font-black text-white">{formatPrice(order.totalPrice)}</td><td className="px-6 py-5 text-right md:px-8"><button onClick={()=>navigate('/admin/orders')} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-white transition-all hover:border-white/20 hover:bg-white/[0.06]">View</button></td></tr>)}
+                {!recentTransactions.length&&<tr><td colSpan="5" className="px-6 py-12 text-center text-sm text-slate-500 md:px-8">Recent transactions will appear here after orders start coming in.</td></tr>}</tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+
+      {isSeller&&tab==='inventory'&&<section className="table-shell"><div className="p-6 md:p-8 border-b border-slate-100 dark:border-dark-border flex flex-col sm:flex-row justify-between gap-4"><div><h3 className="text-2xl font-bold text-slate-900 dark:text-white">Product Inventory</h3><p className="text-slate-500 dark:text-slate-400 mt-1">Products are loaded directly from MongoDB and stay persistent across refresh and relogin.</p></div><div className="relative w-full sm:w-72"><Search className="absolute left-3.5 top-3 text-slate-400" size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products..." className="input-premium pl-10 pr-4 py-3"/></div></div><div className="overflow-x-auto"><table className="table-premium"><thead><tr><th>Product</th><th className="text-center">Price</th><th className="text-center">Category</th><th className="text-center">Stock</th><th className="text-right">Actions</th></tr></thead><tbody>{filtered.map(item=><tr key={item._id}><td><div className="flex items-center gap-4"><img src={getPrimaryProductImage(item)} alt={item.name} className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-dark-border shadow-sm ring-1 ring-slate-100 dark:ring-dark-border" onError={e=>{e.currentTarget.src=getPrimaryProductImage({});}}/><div><p className="font-bold text-slate-900 dark:text-white">{item.name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{item.brand}</p></div></div></td><td className="text-center"><div className="inline-flex flex-col items-center"><span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Selling Price</span><span className="text-lg font-extrabold text-slate-900 dark:text-white">{formatPrice(item.price)}</span></div></td><td className="text-center"><span className="bg-slate-100 dark:bg-dark-bg text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border uppercase tracking-wider">{item.category}</span></td><td className="text-center">{item.countInStock>0?<span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-3.5 py-2 rounded-full text-xs border border-emerald-200 dark:border-emerald-900/40 inline-flex items-center gap-1.5 shadow-sm"><CheckCircle2 size={14}/>{item.countInStock} in stock</span>:<span className="text-red-600 dark:text-red-300 font-bold bg-red-50 dark:bg-red-900/20 px-3.5 py-2 rounded-full text-xs border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1.5 shadow-sm"><XCircle size={14}/>Out of stock</span>}</td><td className="text-right"><div className="flex items-center justify-end gap-2"><button onClick={()=>navigate(`/admin/edit-product/${item._id}`)} className="p-3 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl border border-slate-200 dark:border-dark-border transition-all shadow-sm hover:shadow-md"><Edit size={16}/></button><button onClick={()=>onDelete(item._id)} className="p-3 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl border border-slate-200 dark:border-dark-border transition-all shadow-sm hover:shadow-md"><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div></section>}
 
       {isSeller&&tab==='orders'&&<section className="table-shell"><div className="p-6 md:p-8 border-b"><h3 className="text-2xl font-bold text-slate-900 dark:text-white">Customer Orders</h3></div><div className="overflow-x-auto"><table className="table-premium"><thead><tr><th>Customer</th><th className="text-center">Date</th><th className="text-center">Amount</th><th className="text-center">Payment</th><th className="text-right">Delivery</th></tr></thead><tbody>{orders.map(order=><tr key={order._id}><td><p className="font-bold text-slate-900 dark:text-white">{order.user?.name||'Customer'}</p><p className="text-xs text-slate-500 dark:text-slate-400">#{order._id.slice(-8).toUpperCase()}</p></td><td className="text-center text-slate-600 dark:text-slate-400">{order.createdAt?.substring(0,10)}</td><td className="text-center font-bold text-slate-900 dark:text-white">{formatPrice(order.totalPrice)}</td><td className="text-center"><span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${order.isPaid?'bg-blue-50 text-blue-600 border-blue-200':'bg-yellow-50 text-yellow-600 border-yellow-200'}`}>{order.isPaid?'Paid':'Pending'}</span></td><td className="text-right"><div className="flex items-center justify-end gap-2">{order.isDelivered?<span className="text-green-600 font-bold">Delivered</span>:<button onClick={()=>onDeliver(order._id)} className="text-xs font-bold text-white bg-primary-600 hover:bg-primary-700 px-4 py-2 rounded-xl">Mark Delivered</button>}<button onClick={()=>onDeleteOrder(order._id)} className="text-xs font-bold text-red-500 border border-slate-200 dark:border-dark-border hover:bg-red-50 dark:hover:bg-red-900/10 px-4 py-2 rounded-xl">Delete</button></div></td></tr>)}</tbody></table></div></section>}
 
@@ -714,7 +894,7 @@ const Dashboard=()=>{
 
       {!isSeller&&<section className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">{orders.length===0?<div className="p-12 text-center"><div className="w-20 h-20 bg-slate-50 dark:bg-dark-bg rounded-full flex items-center justify-center mb-6 mx-auto text-slate-300"><Package size={32}/></div><h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No orders yet</h3><p className="text-slate-500 mb-6">Start shopping and your confirmed orders will appear here.</p><Link to="/shop" className="btn-primary h-12 px-8">Shop Premium Gear</Link></div>:<div className="overflow-x-auto"><table className="w-full text-left border-collapse"><thead><tr className="bg-slate-50/80 dark:bg-dark-bg/80 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest"><th className="px-6 py-5 border-b">Order</th><th className="px-6 py-5 border-b text-center">Date</th><th className="px-6 py-5 border-b text-center">Total</th><th className="px-6 py-5 border-b text-center">Payment</th><th className="px-6 py-5 border-b text-right">Delivery</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-dark-border">{orders.map(order=><tr key={order._id}><td className="px-6 py-5"><p className="font-bold text-slate-900 dark:text-white">#{order._id.slice(-8).toUpperCase()}</p><p className="text-xs text-slate-500 dark:text-slate-400">{order.paymentMethod}</p></td><td className="px-6 py-5 text-center text-slate-600 dark:text-slate-400"><span className="inline-flex items-center gap-2"><Clock size={14} className="text-slate-400"/>{order.createdAt?.substring(0,10)}</span></td><td className="px-6 py-5 text-center font-extrabold text-slate-900 dark:text-white">{formatPrice(order.totalPrice)}</td><td className="px-6 py-5 text-center"><span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${order.isPaid?'bg-blue-50 text-blue-600 border-blue-200':'bg-yellow-50 text-yellow-600 border-yellow-200'}`}>{order.isPaid?'Paid':'Pending'}</span></td><td className="px-6 py-5 text-right"><span className={`px-3 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center gap-1.5 ${order.isDelivered?'bg-green-50 text-green-600 border-green-200':'bg-slate-100 text-slate-600 border-slate-200 dark:bg-dark-bg dark:border-dark-border'}`}>{order.isDelivered?'Delivered':'In Transit'}</span></td></tr>)}</tbody></table></div>}</section>}
     </main>
-  </div></div>;
+  </div></div></div>;
 };
 
 export default Dashboard;

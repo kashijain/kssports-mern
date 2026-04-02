@@ -7,9 +7,33 @@ import {
   Check,
   X,
   Filter,
+  ChevronDown,
+  Sparkles,
+  Star,
+  ArrowRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProductStore } from "../store/useStore";
+
+const categoryOptions = [
+  { label: "All", values: ["All"] },
+  { label: "Bats", values: ["Bats", "Bat"] },
+  { label: "Balls", values: ["Balls", "Ball"] },
+  { label: "Accessories", values: ["Accessories", "Accessory", "other"] },
+  { label: "Gloves", values: ["Gloves", "Glove"] },
+  { label: "Shoes", values: ["Shoes", "Shoe", "Footwear"] },
+  { label: "Gear", values: ["Kits", "Kit", "Gear"] },
+];
+
+const sortOptions = [
+  { value: "featured", label: "Featured" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+  { value: "rating", label: "Top Rated" },
+  { value: "name", label: "Name: A to Z" },
+];
+
+const featuredLabelByIndex = ["Best Seller", "Featured", "", "New Arrival"];
 
 const Shop = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,10 +41,11 @@ const Shop = () => {
   const [category, setCategory] = useState(searchParams.get("category") || "All");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
+  const [sortBy, setSortBy] = useState("featured");
+  const [minRating, setMinRating] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(15000);
 
   const { products, loading, fetchProducts } = useProductStore();
-
-  const categories = ["All", "Bats", "Ball", "Shoes", "Kits","other"];
 
   useEffect(() => {
     if (typeof fetchProducts === "function") {
@@ -59,6 +84,9 @@ const Shop = () => {
     triggerLocalLoading();
     setSearchTerm("");
     setCategory("All");
+    setSortBy("featured");
+    setMinRating(0);
+    setMaxPrice(highestPrice);
     setShowMobileFilters(false);
     setSearchParams({});
   };
@@ -67,57 +95,102 @@ const Shop = () => {
     return Array.isArray(products) ? products : [];
   }, [products]);
 
+  const highestPrice = useMemo(() => {
+    const maxProductPrice = safeProducts.reduce(
+      (max, product) => Math.max(max, Number(product?.price || 0)),
+      0
+    );
+    return Math.max(15000, Math.ceil(maxProductPrice / 500) * 500 || 15000);
+  }, [safeProducts]);
+
+  useEffect(() => {
+    setMaxPrice(highestPrice);
+  }, [highestPrice]);
+
   const filteredProducts = useMemo(() => {
-    return safeProducts.filter((product) => {
+    const activeCategory = categoryOptions.find((item) => item.label === category);
+    const nextProducts = safeProducts.filter((product) => {
       const productName = String(product?.name || "").toLowerCase();
       const productCategory = String(product?.category || "").toLowerCase();
       const normalizedSearch = searchTerm.toLowerCase();
-      const normalizedCategory = category.toLowerCase();
 
       const matchSearch = productName.includes(normalizedSearch);
       const matchCategory =
-        category === "All" || productCategory === normalizedCategory;
+        !activeCategory ||
+        category === "All" ||
+        activeCategory.values.some((value) => productCategory === String(value).toLowerCase());
+      const matchPrice = Number(product?.price || 0) <= maxPrice;
+      const matchRating = Number(product?.rating || 0) >= minRating;
 
-      return matchSearch && matchCategory;
+      return matchSearch && matchCategory && matchPrice && matchRating;
     });
-  }, [safeProducts, searchTerm, category]);
+
+    return [...nextProducts].sort((a, b) => {
+      if (sortBy === "price-low") return Number(a?.price || 0) - Number(b?.price || 0);
+      if (sortBy === "price-high") return Number(b?.price || 0) - Number(a?.price || 0);
+      if (sortBy === "rating") return Number(b?.rating || 0) - Number(a?.rating || 0);
+      if (sortBy === "name") return String(a?.name || "").localeCompare(String(b?.name || ""));
+      return 0;
+    });
+  }, [safeProducts, searchTerm, category, maxPrice, minRating, sortBy]);
 
   const isDataLoading = loading || localLoading;
+  const hasActiveFilters =
+    searchTerm || category !== "All" || minRating > 0 || maxPrice < highestPrice || sortBy !== "featured";
 
   return (
-    <div className="min-h-screen bg-transparent pb-24">
+    <div className="min-h-screen bg-slate-950 pb-24">
       <div className="container-bound pt-8">
-        <div className="panel-premium surface-grid relative mb-12 overflow-hidden py-14 md:py-16">
-          <div className="absolute inset-0 hero-glow opacity-60"></div>
-          <div className="relative flex flex-col items-center text-center">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">
-            Premium <span className="text-primary-600 dark:text-primary-400">Collections</span>
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg">
-            Browse our complete catalog of professional-grade sports equipment.
-            Filter by category or search directly for your next upgrade.
-          </p>
+        <div className="relative mb-12 overflow-hidden rounded-[2.25rem] border border-white/10 bg-[#0c1017] px-6 py-16 shadow-[0_28px_80px_-40px_rgba(0,0,0,0.9)] md:px-10 md:py-20">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_24%),linear-gradient(180deg,rgba(2,6,23,0),rgba(2,6,23,0.55))]"></div>
+          <div className="absolute inset-0 opacity-20">
+            <img
+              src="https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80"
+              alt="K.S. Sports collection backdrop"
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="relative">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-bold uppercase tracking-[0.26em] text-primary-300 backdrop-blur-xl">
+              <Sparkles size={14} />
+              Performance Collection
+            </div>
+            <h1 className="max-w-4xl text-4xl font-black uppercase tracking-tight text-white md:text-6xl">
+              Premium Cricket & Sports Gear
+            </h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+              Explore the full K.S. Sports collection with premium gear for match day, training, recovery, and every serious upgrade in between.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4 text-sm text-slate-400">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2">
+                <span className="h-2 w-2 rounded-full bg-primary-500"></span>
+                Premium athletic goods
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2">
+                <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                Trusted by serious players
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
       </div>
 
       <div className="container-bound">
-        <div className="flex flex-col lg:flex-row gap-10">
-          {/* Sidebar / Filters */}
-          <div className="lg:w-1/4 hidden lg:block space-y-8">
+        <div className="flex flex-col gap-10 lg:flex-row">
+          <div className="hidden space-y-6 lg:block lg:w-[300px]">
             {/* Search Box */}
-            <div className="panel-premium">
-              <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
-                <Search size={16} className="text-primary-600" /> Search Catalog
+            <div className="rounded-[2rem] border border-white/10 bg-[#11151d] p-6 shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)]">
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-white">
+                <Search size={16} className="text-primary-500" /> Search Catalog
               </h3>
 
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="E.g., Cricket Bat..."
+                  placeholder="Search premium gear..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="input-premium w-full pl-11 pr-10 h-12 bg-slate-50 border-slate-200 focus:border-primary-600 focus:ring-primary-600/20"
+                  className="input-premium h-12 w-full border-white/10 bg-white/[0.05] pl-11 pr-10 text-white placeholder:text-slate-500 focus:border-primary-600 focus:ring-primary-600/20"
                 />
 
                 <Search
@@ -132,7 +205,7 @@ const Shop = () => {
                       triggerLocalLoading();
                       setSearchTerm("");
                     }}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors bg-slate-100 dark:bg-gray-800 rounded-full p-1"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-full bg-white/[0.06] p-1 text-slate-400 transition-colors hover:text-red-500"
                   >
                     <X size={14} />
                   </button>
@@ -141,41 +214,92 @@ const Shop = () => {
             </div>
 
             {/* Category Filter */}
-            <div className="panel-premium">
-              <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
-                <Filter size={16} className="text-primary-600" /> Categories
+            <div className="rounded-[2rem] border border-white/10 bg-[#11151d] p-6 shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)]">
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-white">
+                <Filter size={16} className="text-primary-500" /> Category
               </h3>
 
               <ul className="space-y-2">
-                {categories.map((item) => (
-                  <li key={item}>
+                {categoryOptions.map((item) => (
+                  <li key={item.label}>
                     <button
                       type="button"
-                      onClick={() => handleCategoryChange(item)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 font-medium ${
-                        category === item
-                          ? "bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400 shadow-sm border border-primary-200 dark:border-primary-900/50"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-dark-bg border border-transparent hover:border-slate-200 dark:hover:border-gray-800"
+                      onClick={() => handleCategoryChange(item.label)}
+                      className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left font-medium transition-all duration-300 ${
+                        category === item.label
+                          ? "border-primary-500/40 bg-primary-600/12 text-white"
+                          : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
                       }`}
                     >
-                      <span>{item}</span>
-                      {category === item && (
-                        <Check
-                          size={18}
-                          className="text-primary-600 dark:text-primary-400"
-                        />
-                      )}
+                      <span>{item.label}</span>
+                      {category === item.label && <Check size={18} className="text-primary-400" />}
                     </button>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {(searchTerm || category !== "All") && (
+            <div className="rounded-[2rem] border border-white/10 bg-[#11151d] p-6 shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)]">
+              <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-white">Price Range</h3>
+              <input
+                type="range"
+                min="0"
+                max={highestPrice}
+                step="500"
+                value={maxPrice}
+                onChange={(e) => {
+                  triggerLocalLoading();
+                  setMaxPrice(Number(e.target.value));
+                }}
+                className="h-2 w-full cursor-pointer accent-primary-500"
+              />
+              <div className="mt-4 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <span>Rs. 0</span>
+                <span>Rs. {maxPrice.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/10 bg-[#11151d] p-6 shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)]">
+              <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-white">Minimum Rating</h3>
+              <div className="space-y-2">
+                {[0, 3, 4].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      triggerLocalLoading();
+                      setMinRating(value);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all ${
+                      minRating === value
+                        ? "border-primary-500/40 bg-primary-600/12 text-white"
+                        : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
+                    }`}
+                  >
+                    <span>{value === 0 ? "All Ratings" : `${value} Stars & Up`}</span>
+                    <div className="flex gap-1 text-yellow-400">
+                      {[...Array(value || 5)].map((_, idx) => (
+                        <Star key={idx} size={12} className="fill-yellow-400" />
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-primary-500/20 bg-[linear-gradient(180deg,rgba(220,38,38,0.16),rgba(14,20,30,0.85))] p-6 shadow-[0_24px_70px_-38px_rgba(220,38,38,0.4)]">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary-300">Pro Feature</p>
+              <h3 className="mt-4 text-2xl font-black text-white">Built for match-ready confidence.</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-300">
+                Use filters to narrow by category, set a tighter price cap, and surface higher-rated picks faster.
+              </p>
+            </div>
+
+            {hasActiveFilters && (
               <button
                 type="button"
                 onClick={clearFilters}
-                className="w-full py-3 text-red-500 font-bold hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors text-sm uppercase tracking-wider"
+                className="w-full rounded-xl border border-white/10 py-3 text-sm font-bold uppercase tracking-[0.18em] text-red-400 transition-colors hover:bg-red-500/10"
               >
                 Clear All Filters
               </button>
@@ -183,16 +307,16 @@ const Shop = () => {
           </div>
 
           {/* Mobile Filter Toggle */}
-          <div className="lg:hidden flex flex-col gap-4 mb-6">
+          <div className="mb-6 flex flex-col gap-4 lg:hidden">
             <div className="flex justify-between items-center gap-4">
               <button
                 type="button"
                 onClick={() => setShowMobileFilters((prev) => !prev)}
-                className="btn-secondary flex-1 border-slate-200 dark:border-dark-border h-12"
+                className="btn-secondary h-12 flex-1 border-white/10 bg-white/[0.05] text-white"
               >
                 <SlidersHorizontal size={18} />
                 Filters
-                {category !== "All" && (
+                {hasActiveFilters && (
                   <span className="w-2.5 h-2.5 rounded-full bg-primary-600 shadow-sm shadow-primary-600/50"></span>
                 )}
               </button>
@@ -203,7 +327,7 @@ const Shop = () => {
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="input-premium w-full pl-10 h-12"
+                  className="input-premium h-12 w-full border-white/10 bg-white/[0.05] pl-10 text-white placeholder:text-slate-500"
                 />
                 <Search
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -220,29 +344,49 @@ const Shop = () => {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="panel-premium p-5">
-                    <h3 className="font-bold text-slate-900 dark:text-white mb-3 text-sm uppercase tracking-wider">
+                  <div className="rounded-[1.6rem] border border-white/10 bg-[#11151d] p-5">
+                    <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-white">
                       Categories
                     </h3>
 
                     <div className="flex flex-wrap gap-2">
-                      {categories.map((item) => (
+                      {categoryOptions.map((item) => (
                         <button
                           type="button"
-                          key={item}
+                          key={item.label}
                           onClick={() => {
-                            handleCategoryChange(item);
+                            handleCategoryChange(item.label);
                             setShowMobileFilters(false);
                           }}
-                          className={`px-5 py-2.5 rounded-full text-sm font-medium transition-colors border ${
-                            category === item
+                          className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-colors ${
+                            category === item.label
                               ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-600/20"
-                              : "bg-transparent text-slate-700 dark:text-slate-300 border-slate-200 dark:border-dark-border hover:border-primary-600"
+                              : "bg-transparent text-slate-300 border-white/10 hover:border-primary-600"
                           }`}
                         >
-                          {item}
+                          {item.label}
                         </button>
                       ))}
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="mb-3 block text-sm font-bold uppercase tracking-[0.18em] text-white">
+                        Sort By
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          className="input-premium h-12 w-full appearance-none border-white/10 bg-white/[0.05] pr-10 text-white"
+                        >
+                          {sortOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -251,18 +395,40 @@ const Shop = () => {
           </div>
 
           {/* Product Grid */}
-          <div className="lg:w-3/4">
-            <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-dark-border">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <div className="lg:flex-1">
+            <div className="mb-8 flex flex-col gap-5 rounded-[2rem] border border-white/10 bg-[#11151d] p-6 shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)] xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                 {category === "All" ? "All Products" : category}
-              </h2>
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Discover premium picks curated for players who want sharper performance and cleaner design.
+                </p>
+              </div>
 
-              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm bg-white/90 dark:bg-dark-card/90 px-4 py-2 rounded-full border border-slate-200 dark:border-dark-border shadow-sm">
-                <span className="font-bold text-slate-900 dark:text-white">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative min-w-[220px]">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="input-premium h-12 w-full appearance-none border-white/10 bg-white/[0.05] pr-10 text-white"
+                  >
+                    {sortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                </div>
+
+                <p className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-medium text-slate-400 shadow-sm">
+                  <span className="font-bold text-white">
                   {isDataLoading ? "..." : filteredProducts.length}
                 </span>{" "}
-                Results
-              </p>
+                  Results
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -270,7 +436,7 @@ const Shop = () => {
                 [...Array(6)].map((_, i) => (
                   <div
                     key={`skel-${i}`}
-                    className="h-[400px] bg-white dark:bg-dark-card rounded-2xl animate-pulse shadow-sm border border-slate-100 dark:border-dark-border"
+                    className="h-[520px] rounded-[2rem] border border-white/10 bg-white/[0.05] animate-pulse"
                   />
                 ))
               ) : filteredProducts.length > 0 ? (
@@ -282,23 +448,27 @@ const Shop = () => {
                     transition={{ duration: 0.35, delay: index * 0.03 }}
                     className="h-full"
                   >
-                    <ProductCard product={product} />
+                    <ProductCard
+                      product={product}
+                      variant="shop"
+                      badgeLabel={featuredLabelByIndex[index % featuredLabelByIndex.length]}
+                    />
                   </motion.div>
                 ))
               ) : (
-                <div className="empty-state col-span-full">
-                  <div className="w-20 h-20 bg-primary-50 dark:bg-primary-900/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="col-span-full rounded-[2rem] border border-white/10 bg-[#11151d] px-6 py-14 text-center shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)]">
+                  <div className="w-20 h-20 bg-primary-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Search size={32} className="text-primary-600" />
                   </div>
 
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                  <h2 className="text-2xl font-bold text-white mb-2">
                     No products found
                   </h2>
 
-                  <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-8">
+                  <p className="text-slate-400 max-w-md mx-auto mb-8">
                     We couldn't find any products matching your current filters
                     or search term{" "}
-                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                    <span className="font-bold text-slate-200">
                       "{searchTerm}"
                     </span>
                     .
@@ -313,6 +483,13 @@ const Shop = () => {
                   </button>
                 </div>
               )}
+            </div>
+
+            <div className="mt-14 flex justify-center">
+              <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-slate-400">
+                More premium gear is added regularly
+                <ArrowRight size={16} className="text-primary-400" />
+              </div>
             </div>
           </div>
         </div>
