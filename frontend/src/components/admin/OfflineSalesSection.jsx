@@ -264,7 +264,7 @@ const OfflineSalesSection = () => {
       }
 
       resetForm();
-      await Promise.all([loadProducts(), loadSales(appliedFilters)]);
+      await Promise.all([loadProducts(), loadSales(appliedFilters), loadPendingPayments(appliedFilters)]);
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
@@ -307,7 +307,7 @@ const OfflineSalesSection = () => {
       }
 
       toast.success('Offline sale deleted');
-      await Promise.all([loadProducts(), loadSales(appliedFilters)]);
+      await Promise.all([loadProducts(), loadSales(appliedFilters), loadPendingPayments(appliedFilters)]);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete offline sale');
     }
@@ -329,7 +329,7 @@ const OfflineSalesSection = () => {
       const { data } = await api.post('/admin-inventory/offline-sales/upload', formData);
       setSheetResult(data);
       toast.success(data.message || 'Offline sales sheet uploaded');
-      await Promise.all([loadProducts(), loadSales(appliedFilters)]);
+      await Promise.all([loadProducts(), loadSales(appliedFilters), loadPendingPayments(appliedFilters)]);
     } catch (error) {
       setSheetResult(null);
       toast.error(error.response?.data?.message || 'Failed to upload offline sales sheet');

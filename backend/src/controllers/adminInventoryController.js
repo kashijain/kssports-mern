@@ -885,6 +885,8 @@ export const uploadOfflineSalesSheet = async (req, res) => {
             salePricePerItem: getRowValue(row, ['sale price', 'sale price per item']),
             costPricePerItem: getRowValue(row, ['cost price', 'cost price per item']),
             paymentMode: getRowValue(row, ['payment mode', 'payment']),
+            pendingAmount: getRowValue(row, ['pending amount', 'pending']),
+            customerName: getRowValue(row, ['customer name', 'customer']),
             notes,
             source: 'history_import',
           });
@@ -899,6 +901,11 @@ export const uploadOfflineSalesSheet = async (req, res) => {
           const normalizedPaymentMode = normalizePaymentMode(getRowValue(row, ['payment mode', 'payment']));
           const normalizedCostPrice = toOptionalNumber(getRowValue(row, ['cost price', 'cost price per item'])) ?? 0;
           const normalizedProductName = resolveAliasedProductName(rawProductName);
+          const rawPendingAmount = getRowValue(row, ['pending amount', 'pending']);
+          const normalizedPendingAmount = toOptionalNumber(rawPendingAmount) ?? 0;
+          const normalizedCustomerName = toTrimmedString(
+            getRowValue(row, ['customer name', 'customer'])
+          );
 
           if (!normalizedSaleDate) {
             throw new Error('Valid sale date is required');
@@ -922,6 +929,12 @@ export const uploadOfflineSalesSheet = async (req, res) => {
 
           const totalSale = normalizedQuantity * normalizedSalePrice;
           const totalCost = normalizedQuantity * normalizedCostPrice;
+          const paymentDetails = derivePaymentDetails({
+            totalSale,
+            paymentMode: normalizedPaymentMode,
+            pendingAmount: normalizedPendingAmount,
+            customerName: normalizedCustomerName,
+          });
 
           normalizedSale = {
             rowType: detectServiceRowType(normalizedProductName),
@@ -937,6 +950,10 @@ export const uploadOfflineSalesSheet = async (req, res) => {
             totalCost,
             profit: totalSale - totalCost,
             paymentMode: normalizedPaymentMode,
+            paymentStatus: paymentDetails.paymentStatus,
+            receivedAmount: paymentDetails.receivedAmount,
+            pendingAmount: paymentDetails.pendingAmount,
+            customerName: paymentDetails.customerName,
             notes: toTrimmedString(notes),
           };
         }
@@ -1068,8 +1085,10 @@ export const getPendingOfflinePayments = async (req, res) => {
   }
 
   const query = {
-    pendingAmount: { $gt: 0 },
-    ...(rangeConditions.length ? { $or: rangeConditions } : {}),
+    $and: [
+      { $or: [{ pendingAmount: { $gt: 0 } }, { paymentMode: 'Pending' }] },
+      ...(rangeConditions.length ? [{ $or: rangeConditions }] : []),
+    ],
   };
 
   const pendingSales = await OfflineSale.find(query).sort({ saleDate: 1, createdAt: 1 });
@@ -1077,7 +1096,14 @@ export const getPendingOfflinePayments = async (req, res) => {
   const normalizedEntries = pendingSales
     .map((sale) => {
       const totalSale = Number(sale.totalSale || 0);
-      const pendingAmount = Number(sale.pendingAmount || 0);
+      const storedPendingAmount = Number(sale.pendingAmount || 0);
+      const inferredPendingAmount =
+        storedPendingAmount > 0
+          ? storedPendingAmount
+          : sale.paymentMode === 'Pending' && totalSale > 0
+            ? totalSale
+            : 0;
+      const pendingAmount = inferredPendingAmount;
       const paidAmount = totalSale - pendingAmount;
       const saleDate = sale.saleDate || sale.date || null;
 
@@ -1093,6 +1119,7 @@ export const getPendingOfflinePayments = async (req, res) => {
         notes: sale.notes || '',
       };
     })
+    .filter((sale) => sale.pendingAmount > 0)
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
   const totalPendingAmount = normalizedEntries.reduce(
