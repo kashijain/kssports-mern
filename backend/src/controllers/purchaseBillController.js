@@ -13,7 +13,7 @@ const toNumber = (value, fallback = 0) => {
 const toTrimmedString = (value) => String(value ?? '').trim();
 
 const getPaymentStatus = (finalTotal, paidAmount) => {
-  if (finalTotal <= 0 || paidAmount <= 0) {
+  if (paidAmount === 0 || finalTotal <= 0) {
     return 'pending';
   }
 

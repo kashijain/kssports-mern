@@ -164,6 +164,7 @@ const StockInwardSection = () => {
   const [targetRowId, setTargetRowId] = useState('');
   const [quickProductForm, setQuickProductForm] = useState(emptyQuickProduct());
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState('pending');
 
   const computedItems = useMemo(
     () =>
@@ -191,9 +192,8 @@ const StockInwardSection = () => {
   const otherCharges = Math.max(toNumber(form.otherCharges), 0);
   const extraChargesTotal = transportCharges + packingCharges + otherCharges;
   const finalTotal = subtotal + extraChargesTotal;
-  const paidAmount = form.paymentMode === 'pending' ? 0 : Math.min(Math.max(toNumber(form.paidAmount), 0), finalTotal);
+  const paidAmount = Math.min(Math.max(toNumber(form.paidAmount), 0), finalTotal);
   const pendingAmount = Math.max(finalTotal - paidAmount, 0);
-  const paymentStatus = getPaymentStatus(finalTotal, paidAmount);
   const totalProducts = computedItems.filter((item) => item.product).length;
 
   const previewBill = {
@@ -271,6 +271,10 @@ const StockInwardSection = () => {
     // Initial load + draft restore should only run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setPaymentStatus(getPaymentStatus(finalTotal, paidAmount));
+  }, [finalTotal, paidAmount]);
 
   const updateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -750,7 +754,7 @@ const StockInwardSection = () => {
               </div>
               <div className="space-y-2">
                 <label className={labelClass}>Paid Amount</label>
-                <input className={inputClass} type="number" min="0" step="0.01" value={form.paymentMode === 'pending' ? '0' : form.paidAmount} disabled={form.paymentMode === 'pending'} onChange={(event) => updateForm('paidAmount', event.target.value)} />
+                <input className={inputClass} type="number" min="0" step="0.01" value={form.paidAmount} onChange={(event) => updateForm('paidAmount', event.target.value)} />
               </div>
               <div className="rounded-[1.5rem] border border-rose-500/20 bg-rose-500/10 p-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-rose-200">Pending Amount</p>
