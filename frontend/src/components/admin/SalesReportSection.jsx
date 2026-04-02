@@ -40,6 +40,7 @@ const SalesReportSection = () => {
   const [filters, setFilters] = useState({ from: getMonthStart(), to: getToday() });
   const [report, setReport] = useState({ summary: emptySummary, dailyBreakdown: [] });
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadReport = async (activeFilters = filters) => {
     setLoading(true);
@@ -80,6 +81,33 @@ const SalesReportSection = () => {
     loadReport(filters);
   };
 
+  const downloadExcel = async () => {
+    setExporting(true);
+
+    try {
+      const res = await api.get('/admin/export-sales', {
+        params: {
+          fromDate: filters.from,
+          toDate: filters.to,
+        },
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'sales-report.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to download sales report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <section className="panel-premium p-6 md:p-8 space-y-6">
@@ -114,6 +142,14 @@ const SalesReportSection = () => {
             <button type="button" onClick={() => applyQuickFilter('week')} className="px-5 py-3 rounded-xl font-bold text-sm border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">This Week</button>
             <button type="button" onClick={() => applyQuickFilter('month')} className="px-5 py-3 rounded-xl font-bold text-sm border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">This Month</button>
             <button type="button" onClick={applyRange} className="px-5 py-3 rounded-xl font-bold text-sm text-white bg-primary-600 hover:bg-primary-700">Apply</button>
+            <button
+              type="button"
+              onClick={downloadExcel}
+              disabled={exporting}
+              className="bg-red-500 hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-3 rounded-xl font-bold text-sm"
+            >
+              {exporting ? 'Downloading...' : 'Download Excel'}
+            </button>
           </div>
         </div>
       </section>

@@ -2,6 +2,7 @@ import OfflineSale from '../models/OfflineSale.js';
 import Order from '../models/Order.js';
 import BatRepair from '../models/BatRepair.js';
 import Expense from '../models/Expense.js';
+import ExcelJS from 'exceljs';
 
 const roundCurrency = (value) => Number(Number(value || 0).toFixed(2));
 
@@ -71,6 +72,15 @@ const normalizeOfflineProductName = (value = '') =>
     .toLowerCase();
 
 const isFiniteNumber = (value) => Number.isFinite(Number(value));
+const toNumeric = (value) => roundCurrency(Number(value || 0));
+const formatExcelDate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toISOString().slice(0, 10);
+};
 
 const isValidOfflineSalesRow = (entry) => {
   const productName = normalizeOfflineProductName(entry.productName);
@@ -282,4 +292,141 @@ export const getBusinessSummary = async (req, res) => {
     range: reportData.range,
     summary: reportData.summary,
   });
+};
+
+export const exportSalesReport = async (req, res) => {
+  const normalizedRange = normalizeRange({
+    from: req.query.fromDate || req.query.from,
+    to: req.query.toDate || req.query.to,
+  });
+
+  if (!normalizedRange) {
+    res.status(400);
+    throw new Error('Valid fromDate/toDate are required');
+  }
+
+  const { fromDate, toDate } = normalizedRange;
+
+  const [offlineSales, onlineOrders] = await Promise.all([
+    OfflineSale.find({
+      saleDate: { $gte: fromDate, $lte: toDate },
+    }).sort({ saleDate: 1, createdAt: 1 }),
+    Order.find({
+      isPaid: true,
+      createdAt: { $gte: fromDate, $lte: toDate },
+    })
+      .populate('orderItems.product', 'costPrice')
+      .populate('user', 'name')
+      .sort({ createdAt: 1, paidAt: 1 }),
+  ]);
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Sales Report');
+
+  worksheet.columns = [
+    { header: 'Date', key: 'date', width: 14 },
+    { header: 'Type', key: 'type', width: 12 },
+    { header: 'Product Name', key: 'productName', width: 32 },
+    { header: 'Quantity', key: 'quantity', width: 12 },
+    { header: 'Sale Price', key: 'salePrice', width: 14 },
+    { header: 'Total Sale', key: 'totalSale', width: 14 },
+    { header: 'Cost Price', key: 'costPrice', width: 14 },
+    { header: 'Total Cost', key: 'totalCost', width: 14 },
+    { header: 'Profit', key: 'profit', width: 14 },
+    { header: 'Payment Mode', key: 'paymentMode', width: 18 },
+    { header: 'Pending Amount', key: 'pendingAmount', width: 16 },
+    { header: 'Customer Name', key: 'customerName', width: 24 },
+  ];
+
+  const offlineRows = offlineSales
+    .filter((entry) => isValidOfflineSalesRow(entry))
+    .map((entry) => ({
+      date: formatExcelDate(entry.saleDate),
+      type: 'Offline',
+      productName: entry.productName || '-',
+      quantity: toNumeric(entry.quantitySold),
+      salePrice: toNumeric(entry.salePricePerItem),
+      totalSale: toNumeric(entry.totalSale),
+      costPrice: toNumeric(entry.costPricePerItem),
+      totalCost: toNumeric(entry.totalCost),
+      profit: toNumeric(entry.profit || toNumeric(entry.totalSale) - toNumeric(entry.totalCost)),
+      paymentMode: entry.paymentMode || '-',
+      pendingAmount: toNumeric(entry.pendingAmount),
+      customerName: entry.customerName || '-',
+    }));
+
+  const onlineRows = onlineOrders.flatMap((order) => {
+    const customerName = order.user?.name || '-';
+    const paymentMode = order.paymentMethod || 'Online';
+
+    return order.orderItems.map((item) => {
+      const quantity = toNumeric(item.qty);
+      const salePrice = toNumeric(item.price);
+      const totalSale = roundCurrency(quantity * salePrice);
+      const costPrice = toNumeric(item.product?.costPrice);
+      const totalCost = roundCurrency(quantity * costPrice);
+      const profit = roundCurrency(totalSale - totalCost);
+
+      return {
+        date: formatExcelDate(order.createdAt),
+        type: 'Online',
+        productName: item.name || '-',
+        quantity,
+        salePrice,
+        totalSale,
+        costPrice,
+        totalCost,
+        profit,
+        paymentMode,
+        pendingAmount: 0,
+        customerName,
+      };
+    });
+  });
+
+  [...offlineRows, ...onlineRows]
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .forEach((row) => worksheet.addRow(row));
+
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFB91C1C' },
+  };
+  headerRow.border = {
+    bottom: { style: 'thin', color: { argb: '33FFFFFF' } },
+  };
+
+  worksheet.eachRow((row, rowNumber) => {
+    row.alignment = { vertical: 'middle' };
+
+    if (rowNumber === 1) {
+      return;
+    }
+
+    row.eachCell((cell, colNumber) => {
+      if ([4, 5, 6, 7, 8, 9, 11].includes(colNumber)) {
+        cell.numFmt = '#,##0.00';
+      }
+
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: '14CBD5E1' } },
+      };
+    });
+  });
+
+  res.setHeader(
+    'Content-Disposition',
+    'attachment; filename=sales-report.xlsx'
+  );
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+
+  await workbook.xlsx.write(res);
+  res.end();
 };
