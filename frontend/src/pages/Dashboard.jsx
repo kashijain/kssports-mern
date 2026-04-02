@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { BarChart3, Bell, CheckCircle2, ChevronRight, Clock, Edit, FileSpreadsheet, HelpCircle, ImagePlus, LayoutDashboard, LogOut, Menu, Package, Plus, ReceiptIndianRupee, Search, Settings, ShoppingBag, Sparkles, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
+import { BarChart3, Bell, CheckCircle2, ChevronDown, ChevronRight, Clock, Edit, FileSpreadsheet, HelpCircle, ImagePlus, LayoutDashboard, LogOut, Menu, Package, Plus, ReceiptIndianRupee, Search, Settings, ShoppingBag, Sparkles, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useAuthStore, useOrderStore, useProductStore } from '../store/useStore';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
@@ -139,6 +139,8 @@ const Dashboard=()=>{
   const [saving,setSaving]=useState(false);
   const [generatingDetails,setGeneratingDetails]=useState(false);
   const [sidebarOpen,setSidebarOpen]=useState(false);
+  const [isProductNameMenuOpen,setIsProductNameMenuOpen]=useState(false);
+  const productNameMenuRef=useRef(null);
   const isSeller=userInfo?.role==='seller';
   const isEdit=Boolean(id);
   const tab=!isSeller
@@ -180,6 +182,16 @@ const Dashboard=()=>{
   },[isSeller,tab,fetchAllOrders,fetchMyOrders,fetchProducts]);
   useEffect(()=>{ if(isSeller&&isEdit&&id){ fetchProductById(id).catch(e=>{ toast.error(e.message||'Failed to load product'); navigate('/admin/manage-products',{replace:true});}); } else { setForm(emptyForm);} },[isSeller,isEdit,id,fetchProductById,navigate]);
   useEffect(()=>{ setSidebarOpen(false); },[location.pathname]);
+  useEffect(()=>{
+    const handleClickOutside=(event)=>{
+      if(productNameMenuRef.current&&!productNameMenuRef.current.contains(event.target)){
+        setIsProductNameMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown',handleClickOutside);
+    return ()=>document.removeEventListener('mousedown',handleClickOutside);
+  },[]);
+  useEffect(()=>{ setIsProductNameMenuOpen(false); },[location.pathname]);
   useEffect(()=>{
     if(isEdit&&product?._id===id){
       const { productNameOption, customProductName }=getProductNameFields(product.name);
@@ -320,7 +332,10 @@ const Dashboard=()=>{
     category:value,
     specifications:prev.specifications.map((spec)=>getSpecificationFields(getResolvedSpecificationName(spec),spec.value,value,specificationOptionsMap))
   }));
-  const onProductNameOptionChange=(value)=>setForm(prev=>({ ...prev, productNameOption:value, customProductName:value===OTHER_PRODUCT_OPTION?prev.customProductName:'' }));
+  const onProductNameOptionChange=(value)=>{
+    setForm(prev=>({ ...prev, productNameOption:value, customProductName:value===OTHER_PRODUCT_OPTION?prev.customProductName:'' }));
+    setIsProductNameMenuOpen(false);
+  };
   const onCustomProductNameChange=(value)=>setForm(prev=>({ ...prev, customProductName:value }));
   const onAddProductName=()=>{
     const nextName=window.prompt('Enter new product name');
@@ -766,11 +781,51 @@ const Dashboard=()=>{
                   <button type="button" onClick={onDeleteProductNameOption} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Delete</button>
                 </div>
               </div>
-              <select value={form.productNameOption} onChange={e=>onProductNameOptionChange(e.target.value)} required className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40">
-                <option value="" disabled>Select Product Name</option>
-                {productNameOptions.map(option=><option key={option} value={option}>{option}</option>)}
-                <option value={OTHER_PRODUCT_OPTION}>{OTHER_PRODUCT_OPTION}</option>
-              </select>
+              <div className="relative" ref={productNameMenuRef}>
+                <button
+                  type="button"
+                  onClick={()=>setIsProductNameMenuOpen(prev=>!prev)}
+                  className={`flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-left text-sm transition-all ${
+                    isProductNameMenuOpen
+                      ? 'border-primary-500/40 bg-[#151b24] shadow-[0_18px_36px_-24px_rgba(220,38,38,0.45)]'
+                      : 'border-white/10 bg-[#151b24] hover:border-white/20 hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <span className={form.productNameOption ? 'truncate text-white' : 'truncate text-slate-500'}>
+                    {form.productNameOption || 'Select Product Name'}
+                  </span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-slate-400 transition-transform ${isProductNameMenuOpen ? 'rotate-180 text-primary-300' : ''}`}
+                  />
+                </button>
+
+                {isProductNameMenuOpen && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#121821]/98 shadow-[0_28px_70px_-36px_rgba(0,0,0,0.98)] backdrop-blur-xl">
+                    <div className="max-h-72 overflow-y-auto p-2">
+                      {[...productNameOptions, OTHER_PRODUCT_OPTION].map(option=>(
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={()=>onProductNameOptionChange(option)}
+                          className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm transition-all ${
+                            form.productNameOption===option
+                              ? 'bg-primary-500/12 text-white ring-1 ring-inset ring-primary-500/30'
+                              : 'text-slate-200 hover:bg-white/[0.06] hover:text-white'
+                          }`}
+                        >
+                          <span className="truncate">{option}</span>
+                          {form.productNameOption===option && (
+                            <span className="ml-3 text-[10px] font-bold uppercase tracking-[0.22em] text-primary-300">
+                              Selected
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">

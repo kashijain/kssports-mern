@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, LogOut, Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
@@ -8,12 +8,14 @@ import { useWishlistStore } from '../../store/useWishlistStore';
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const { cartItems } = useCartStore();
   const { wishlistItems } = useWishlistStore();
   const { userInfo, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const profileMenuRef = useRef(null);
 
   const cartItemsCount = cartItems.reduce((acc, item) => acc + item.qty, 0);
   const wishlistCount = wishlistItems.length;
@@ -34,6 +36,21 @@ const Navbar = () => {
     }
   }, [theme]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setIsProfileMenuOpen(false);
+  }, [location.pathname]);
+
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Shop', path: '/shop' },
@@ -45,6 +62,7 @@ const Navbar = () => {
   const handleLogout = async () => {
     await logout();
     setIsMobileMenuOpen(false);
+    setIsProfileMenuOpen(false);
     navigate('/login');
   };
 
@@ -102,8 +120,16 @@ const Navbar = () => {
           </Link>
 
           {userInfo ? (
-            <div className="group relative cursor-pointer">
-              <div className="flex items-center gap-3 rounded-full border border-white/60 bg-white/75 px-3 py-2 shadow-[0_18px_35px_-26px_rgba(15,23,42,0.75)] backdrop-blur-xl transition-all dark:border-white/10 dark:bg-white/5">
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                className={`flex items-center gap-3 rounded-full border px-3 py-2 shadow-[0_18px_35px_-26px_rgba(15,23,42,0.75)] backdrop-blur-xl transition-all ${
+                  isProfileMenuOpen
+                    ? 'border-primary-500/30 bg-[#11161f]/95'
+                    : 'border-white/60 bg-white/75 dark:border-white/10 dark:bg-white/5'
+                }`}
+              >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-950 text-white dark:bg-white dark:text-slate-900">
                   <User size={18} />
                 </div>
@@ -111,19 +137,36 @@ const Navbar = () => {
                   <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{userInfo.name}</p>
                   <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500 dark:text-slate-400">{userInfo.role === 'seller' ? 'Seller' : 'Account'}</p>
                 </div>
-              </div>
-              <div className="invisible absolute right-0 top-16 flex w-56 flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/95 p-2 opacity-0 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.5)] transition-all duration-200 group-hover:visible group-hover:opacity-100 dark:border-white/10 dark:bg-dark-card/96">
-                <div className="mb-2 rounded-2xl bg-slate-100/80 px-4 py-3 dark:bg-dark-bg/80">
-                  <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{userInfo.name}</p>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500 dark:text-slate-400">{userInfo.email}</p>
-                </div>
-                <Link to={userInfo.role === 'seller' ? '/admin' : '/profile'} className="rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white">
-                  {userInfo.role === 'seller' ? 'Seller Dashboard' : 'Dashboard'}
-                </Link>
-                <button onClick={handleLogout} className="mt-1 flex items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20">
-                  <LogOut size={14} /> Logout
-                </button>
-              </div>
+              </button>
+              <AnimatePresence>
+                {isProfileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute right-0 top-16 z-40 flex w-64 flex-col overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#11161f]/98 p-2 shadow-[0_30px_70px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+                  >
+                    <div className="mb-2 rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                      <p className="truncate text-sm font-semibold text-white">{userInfo.name}</p>
+                      <p className="mt-1 truncate text-[11px] text-slate-400">{userInfo.email}</p>
+                    </div>
+                    <Link
+                      to={userInfo.role === 'seller' ? '/admin' : '/profile'}
+                      onClick={() => setIsProfileMenuOpen(false)}
+                      className="rounded-[1.1rem] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-white/[0.06]"
+                    >
+                      {userInfo.role === 'seller' ? 'Seller Dashboard' : 'Dashboard'}
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="mt-1 flex items-center gap-2 rounded-[1.1rem] px-4 py-3 text-left text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200"
+                    >
+                      <LogOut size={14} /> Logout
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <Link to="/login" className="btn-primary px-5 py-2.5 text-sm">
