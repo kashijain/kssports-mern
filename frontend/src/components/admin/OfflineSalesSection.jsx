@@ -5,6 +5,7 @@ import {
   ChartColumn,
   CircleDollarSign,
   Clock3,
+  Download,
   FileUp,
   Filter,
   Package,

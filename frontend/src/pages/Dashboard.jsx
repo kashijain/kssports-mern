@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { BarChart3, Bell, CheckCircle2, ChevronRight, Clock, Edit, FileSpreadsheet, HelpCircle, LayoutDashboard, LogOut, Menu, Package, Plus, ReceiptIndianRupee, Search, Settings, ShoppingBag, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
+import { BarChart3, Bell, CheckCircle2, ChevronRight, Clock, Edit, FileSpreadsheet, HelpCircle, ImagePlus, LayoutDashboard, LogOut, Menu, Package, Plus, ReceiptIndianRupee, Search, Settings, ShoppingBag, Sparkles, Trash2, Wallet, Wrench, Users, XCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useAuthStore, useOrderStore, useProductStore } from '../store/useStore';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
@@ -725,27 +725,48 @@ const Dashboard=()=>{
       {isSeller&&tab==='sales-report'&&<SalesReportSection />}
 
       {isSeller&&(tab==='form'||tab==='edit')&&(
-        <form onSubmit={onSubmit} className="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-100 dark:border-dark-border p-6 md:p-8 space-y-8">
-          <div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {isEdit?'Edit Product':'Create New Product'}
-            </h3>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
-              {isEdit?'Update product details and replace images only if needed.':'Publish products directly to the live catalog with persistent MongoDB storage.'}
-            </p>
-          </div>
+        <form onSubmit={onSubmit} className="space-y-8">
+          <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.16),transparent_46%)]"></div>
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary-300">
+                  Inventory Management
+                </p>
+                <h3 className="mt-3 text-3xl font-black uppercase tracking-tight text-white md:text-4xl">
+                  {isEdit?'Edit Product':'Add New Product'}
+                </h3>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+                  {isEdit
+                    ? 'Update product details, media, and specifications while preserving your current K.S. Sports inventory workflow.'
+                    : 'Configure a new premium gear listing for the storefront using the existing product creation and upload flow.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={()=>{setImages([]); setForm(emptyForm); setCategoryOptions(CATEGORY_OPTIONS); setProductNameOptions(PRODUCT_NAME_OPTIONS); setFeatureOptions(FEATURE_OPTIONS); setSpecificationOptionsMap(cloneSpecificationOptionsMap()); navigate('/admin/manage-products');}} className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">Discard</button>
+                <button type="submit" disabled={saving} className="rounded-2xl bg-primary-600 px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_18px_40px_-20px_rgba(220,38,38,0.75)] transition-all hover:bg-primary-700 disabled:opacity-60">{saving?'Saving...':isEdit?'Save Changes':'Save Product'}</button>
+              </div>
+            </div>
+          </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+            <div className="space-y-8">
+              <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+                <div className="mb-6">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Basic Information</p>
+                  <h4 className="mt-2 text-2xl font-black tracking-tight text-white">Core Product Setup</h4>
+                </div>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Product Name</label>
+                <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={onAddProductName} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">Add</button>
-                  <button type="button" onClick={onEditProductName} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">Edit</button>
-                  <button type="button" onClick={onDeleteProductNameOption} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">Delete</button>
+                  <button type="button" onClick={onAddProductName} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Add</button>
+                  <button type="button" onClick={onEditProductName} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Edit</button>
+                  <button type="button" onClick={onDeleteProductNameOption} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Delete</button>
                 </div>
               </div>
-              <select value={form.productNameOption} onChange={e=>onProductNameOptionChange(e.target.value)} required className="w-full h-12 bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 text-sm text-slate-900 dark:text-white">
+              <select value={form.productNameOption} onChange={e=>onProductNameOptionChange(e.target.value)} required className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40">
                 <option value="" disabled>Select Product Name</option>
                 {productNameOptions.map(option=><option key={option} value={option}>{option}</option>)}
                 <option value={OTHER_PRODUCT_OPTION}>{OTHER_PRODUCT_OPTION}</option>
@@ -753,141 +774,183 @@ const Dashboard=()=>{
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Price</label>
-              <input type="number" step="0.01" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))} required placeholder="Price" className="w-full h-12 bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 text-sm text-slate-900 dark:text-white"/>
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Price</label>
+              <input type="number" step="0.01" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))} required placeholder="Price" className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
             </div>
 
             {form.productNameOption===OTHER_PRODUCT_OPTION&&(
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Custom Product Name</label>
-                <input value={form.customProductName} onChange={e=>onCustomProductNameChange(e.target.value)} required placeholder="Enter new product name" className="w-full h-12 bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 text-sm"/>
+                <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Custom Product Name</label>
+                <input value={form.customProductName} onChange={e=>onCustomProductNameChange(e.target.value)} required placeholder="Enter new product name" className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
               </div>
             )}
 
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Brand</label>
-              <input value={form.brand} onChange={e=>setForm(p=>({...p,brand:e.target.value}))} required placeholder="Brand" className="w-full h-12 bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 text-sm"/>
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Brand</label>
+              <input value={form.brand} onChange={e=>setForm(p=>({...p,brand:e.target.value}))} required placeholder="Brand" className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
             </div>
 
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Category</label>
+                <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Category</label>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={onAddCategoryOption} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">Add</button>
-                  <button type="button" onClick={onEditCategoryOption} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">Edit</button>
-                  <button type="button" onClick={onDeleteCategoryOption} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg">Delete</button>
-                  <button type="button" onClick={onGenerateDetails} disabled={generatingDetails} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-bg disabled:opacity-60">
+                  <button type="button" onClick={onAddCategoryOption} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Add</button>
+                  <button type="button" onClick={onEditCategoryOption} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Edit</button>
+                  <button type="button" onClick={onDeleteCategoryOption} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Delete</button>
+                  <button type="button" onClick={onGenerateDetails} disabled={generatingDetails} className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06] disabled:opacity-60">
+                    <Sparkles size={12}/>
                     {generatingDetails?'Generating...':'Generate Details'}
                   </button>
                 </div>
               </div>
-              <select value={form.category} onChange={e=>onCategoryChange(e.target.value)} required className="w-full h-12 bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 text-sm text-slate-900 dark:text-white">
+              <select value={form.category} onChange={e=>onCategoryChange(e.target.value)} required className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40">
                 <option value="" disabled>Select Category</option>
                 {categoryOptions.map(option=><option key={option} value={option}>{option}</option>)}
               </select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Stock Count</label>
-              <input type="number" value={form.countInStock} onChange={e=>setForm(p=>({...p,countInStock:e.target.value}))} required placeholder="Stock Count" className="w-full h-12 bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 text-sm"/>
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Stock Count</label>
+              <input type="number" value={form.countInStock} onChange={e=>setForm(p=>({...p,countInStock:e.target.value}))} required placeholder="Stock Count" className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
             </div>
 
-            <div className="md:col-span-2">
-              <label className="flex items-center gap-3 px-4 py-3 border rounded-xl bg-slate-50 dark:bg-dark-bg text-sm font-medium">
-                <input type="checkbox" checked={form.codAvailable} onChange={e=>setForm(p=>({...p,codAvailable:e.target.checked}))}/>
-                Allow COD
-              </label>
-            </div>
+                </div>
+              </section>
 
-            <div className="md:col-span-2 space-y-4">
-              <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Key Features</h4>
+            <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+              <div className="mb-6">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Product Details</p>
+                <h4 className="mt-2 text-2xl font-black tracking-tight text-white">Features & Specifications</h4>
+              </div>
+
+            <div className="space-y-8">
+            <div className="space-y-4">
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Key Features</h4>
               <div className="space-y-4">
                 {form.features.map((feature,index)=>(
-                  <div key={feature.id} className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/70 dark:bg-dark-bg/70 p-4">
+                  <div key={feature.id} className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
                     <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-4 items-start">
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Feature</span>
+                          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Feature</span>
                           <div className="flex flex-wrap items-center gap-2">
-                            <button type="button" onClick={()=>onAddFeatureOption(index)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-dark-card">Add</button>
-                            <button type="button" onClick={()=>onEditFeatureOption(index)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-dark-card">Edit</button>
-                            <button type="button" onClick={()=>onDeleteFeatureOption(index)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-dark-card">Delete</button>
+                            <button type="button" onClick={()=>onAddFeatureOption(index)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Add</button>
+                            <button type="button" onClick={()=>onEditFeatureOption(index)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Edit</button>
+                            <button type="button" onClick={()=>onDeleteFeatureOption(index)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Delete</button>
                           </div>
                         </div>
                         <div className="space-y-3">
-                          <select value={feature.option} onChange={e=>onFeatureOptionChange(index,e.target.value)} className="w-full h-12 bg-white dark:bg-dark-card border rounded-xl px-4 text-sm text-slate-900 dark:text-white">
+                          <select value={feature.option} onChange={e=>onFeatureOptionChange(index,e.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40">
                             <option value="" disabled>Select Feature</option>
                             {featureOptions.map(option=><option key={option} value={option}>{option}</option>)}
                             <option value={OTHER_FEATURE_OPTION}>{OTHER_FEATURE_OPTION}</option>
                           </select>
-                          {feature.option===OTHER_FEATURE_OPTION&&<input value={feature.customValue} onChange={e=>onCustomFeatureChange(index,e.target.value)} placeholder="Enter new feature" className="w-full h-12 bg-white dark:bg-dark-card border rounded-xl px-4 py-3 text-sm"/>}
+                          {feature.option===OTHER_FEATURE_OPTION&&<input value={feature.customValue} onChange={e=>onCustomFeatureChange(index,e.target.value)} placeholder="Enter new feature" className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>}
                         </div>
                       </div>
-                      <button type="button" onClick={()=>removeFeature(index)} className="w-full xl:w-auto px-4 py-3 rounded-xl border border-slate-200 dark:border-dark-border text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10">Remove</button>
+                      <button type="button" onClick={()=>removeFeature(index)} className="w-full xl:w-auto rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition-all hover:bg-red-500/15">Remove</button>
                     </div>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addFeature} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-dark-border font-bold text-sm text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10"><Plus size={16}/>Add Feature</button>
+              <button type="button" onClick={addFeature} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 font-bold text-sm text-primary-300 transition-all hover:border-white/20 hover:bg-white/[0.06]"><Plus size={16}/>Add Feature</button>
             </div>
 
-            <div className="md:col-span-2 space-y-4">
-              <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Specifications</h4>
+            <div className="space-y-4">
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Specifications</h4>
               <div className="space-y-4">
                 {form.specifications.map((spec,index)=>(
-                  <div key={spec.id} className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/70 dark:bg-dark-bg/70 p-4">
+                  <div key={spec.id} className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
                     <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-4 items-start">
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Specification</span>
+                          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Specification</span>
                           <div className="flex flex-wrap items-center gap-2">
-                            <button type="button" onClick={()=>onAddSpecificationOption(index)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-dark-card">Add</button>
-                            <button type="button" onClick={()=>onEditSpecificationOption(index)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-dark-card">Edit</button>
-                            <button type="button" onClick={()=>onDeleteSpecificationOption(index)} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-dark-card">Delete</button>
+                            <button type="button" onClick={()=>onAddSpecificationOption(index)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Add</button>
+                            <button type="button" onClick={()=>onEditSpecificationOption(index)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Edit</button>
+                            <button type="button" onClick={()=>onDeleteSpecificationOption(index)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]">Delete</button>
                           </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-3">
-                            <select value={spec.option} onChange={e=>onSpecificationOptionChange(index,e.target.value)} className="w-full h-12 bg-white dark:bg-dark-card border rounded-xl px-4 text-sm text-slate-900 dark:text-white">
+                            <select value={spec.option} onChange={e=>onSpecificationOptionChange(index,e.target.value)} className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40">
                               <option value="" disabled>Select Specification Name</option>
                               {currentSpecificationOptions.map(option=><option key={`${form.category}-${option}`} value={option}>{option}</option>)}
                             </select>
-                            {spec.option===OTHER_SPECIFICATION_OPTION&&<input value={spec.customName} onChange={e=>onCustomSpecificationNameChange(index,e.target.value)} placeholder="Enter new specification name" className="w-full h-12 bg-white dark:bg-dark-card border rounded-xl px-4 py-3 text-sm"/>}
+                            {spec.option===OTHER_SPECIFICATION_OPTION&&<input value={spec.customName} onChange={e=>onCustomSpecificationNameChange(index,e.target.value)} placeholder="Enter new specification name" className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>}
                           </div>
-                          <input value={spec.value} onChange={e=>updateSpec(index,'value',e.target.value)} placeholder="Specification value" className="w-full h-12 bg-white dark:bg-dark-card border rounded-xl px-4 py-3 text-sm"/>
+                          <input value={spec.value} onChange={e=>updateSpec(index,'value',e.target.value)} placeholder="Specification value" className="h-12 w-full rounded-2xl border border-white/10 bg-[#151b24] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
                         </div>
                       </div>
-                      <button type="button" onClick={()=>removeSpec(index)} className="w-full xl:w-auto px-4 py-3 rounded-xl border border-slate-200 dark:border-dark-border text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10">Remove</button>
+                      <button type="button" onClick={()=>removeSpec(index)} className="w-full xl:w-auto rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition-all hover:bg-red-500/15">Remove</button>
                     </div>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addSpec} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-dark-border font-bold text-sm text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10"><Plus size={16}/>Add Specification</button>
+              <button type="button" onClick={addSpec} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 font-bold text-sm text-primary-300 transition-all hover:border-white/20 hover:bg-white/[0.06]"><Plus size={16}/>Add Specification</button>
+            </div>
+            </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+              <div className="mb-6">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Description</p>
+                <h4 className="mt-2 text-2xl font-black tracking-tight text-white">Storefront Content</h4>
+              </div>
+            <div className="space-y-4">
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Description</label>
+              <textarea rows="5" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} required placeholder="Describe the product, performance benefits, and any key selling points." className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
+            </div>
+            </section>
             </div>
 
-            <div className="md:col-span-2 space-y-4">
+            <aside className="space-y-8">
+            <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+              <div className="mb-6">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Product Media</p>
+                <h4 className="mt-2 text-2xl font-black tracking-tight text-white">Image Uploads</h4>
+              </div>
+
+              <div className="space-y-5">
               {isEdit&&product?.images?.length>0&&!images.length&&(
                 <div className="flex flex-wrap gap-4">
                   {product.images.map((img,i)=>(
-                    <div key={i} className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-bg shadow-sm">
+                    <div key={i} className="h-24 w-24 overflow-hidden rounded-2xl border border-white/10 bg-[#151b24] shadow-sm md:h-28 md:w-28">
                       <img src={getImageUrl(img)} alt={`Existing ${i+1}`} className="w-full h-full object-cover"/>
                     </div>
                   ))}
                 </div>
               )}
-              <input type="file" accept="image/*" multiple onChange={onFiles} className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm"/>
-              {images.length>0&&<p className="text-xs text-slate-500 dark:text-slate-400">{images.length} new image(s) selected</p>}
-            </div>
+              <label className="flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-white/15 bg-white/[0.03] px-6 py-8 text-center transition-all hover:border-primary-500/40 hover:bg-white/[0.05]">
+                <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600/15 text-primary-300">
+                  <ImagePlus size={24}/>
+                </span>
+                <span className="text-sm font-bold uppercase tracking-[0.16em] text-white">Upload Product Images</span>
+                <span className="mt-2 text-xs leading-6 text-slate-500">PNG, JPG or WEBP. Up to 4 images supported by the current uploader.</span>
+                <input type="file" accept="image/*" multiple onChange={onFiles} className="hidden"/>
+              </label>
+              {images.length>0&&<p className="text-xs text-slate-400">{images.length} new image(s) selected</p>}
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Visibility</p>
+                <label className="mt-4 flex items-center gap-3 text-sm font-medium text-slate-200">
+                  <input type="checkbox" checked={form.codAvailable} onChange={e=>setForm(p=>({...p,codAvailable:e.target.checked}))}/>
+                  Allow COD for this product
+                </label>
+              </div>
+              </div>
+            </section>
 
-            <div className="md:col-span-2 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Description</label>
-              <textarea rows="4" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} required placeholder="Description" className="w-full bg-slate-50 dark:bg-dark-bg border rounded-xl px-4 py-3 text-sm"/>
-            </div>
-          </div>
-
-          <div className="pt-2 flex justify-end gap-3">
-            <button type="button" onClick={()=>{setImages([]); setForm(emptyForm); setCategoryOptions(CATEGORY_OPTIONS); setProductNameOptions(PRODUCT_NAME_OPTIONS); setFeatureOptions(FEATURE_OPTIONS); setSpecificationOptionsMap(cloneSpecificationOptionsMap()); navigate('/admin/manage-products');}} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-dark-bg">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary px-8 shadow-lg shadow-primary-600/20 disabled:opacity-60">{saving?'Saving...':isEdit?'Update Product':'Publish Product'}</button>
+            <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+              <div className="mb-6">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Action Panel</p>
+                <h4 className="mt-2 text-2xl font-black tracking-tight text-white">Publish Controls</h4>
+              </div>
+              <div className="space-y-4">
+                <button type="submit" disabled={saving} className="flex w-full items-center justify-center rounded-2xl bg-primary-600 px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_18px_40px_-20px_rgba(220,38,38,0.75)] transition-all hover:bg-primary-700 disabled:opacity-60">{saving?'Saving...':isEdit?'Update Product':'Save Product'}</button>
+                <button type="button" onClick={()=>{setImages([]); setForm(emptyForm); setCategoryOptions(CATEGORY_OPTIONS); setProductNameOptions(PRODUCT_NAME_OPTIONS); setFeatureOptions(FEATURE_OPTIONS); setSpecificationOptionsMap(cloneSpecificationOptionsMap()); navigate('/admin/manage-products');}} className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]">Cancel</button>
+              </div>
+            </section>
+            </aside>
           </div>
         </form>
       )}
