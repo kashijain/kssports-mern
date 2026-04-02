@@ -3,6 +3,7 @@ import {
   createOfflineSale,
   deleteOfflineSale,
   getOfflineSales,
+  getPendingOfflinePayments,
   updateOfflineSale,
   uploadOfflineSalesSheet,
   uploadOfflineSalesSheetMiddleware,
@@ -28,6 +29,8 @@ router.post(
   uploadOfflineSalesSheetMiddleware,
   uploadOfflineSalesSheet
 );
+
+router.get('/offline-sales/pending', protect, seller, getPendingOfflinePayments);
 
 router
   .route('/offline-sales')

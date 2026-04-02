@@ -1035,3 +1035,83 @@ export const getOfflineSales = async (req, res) => {
     summary,
   });
 };
+
+export const getPendingOfflinePayments = async (req, res) => {
+  const { fromDate, toDate } = req.query;
+  const rangeConditions = [];
+
+  if (fromDate || toDate) {
+    const dateRange = {};
+
+    if (fromDate) {
+      const start = new Date(`${fromDate}T00:00:00.000Z`);
+      if (!Number.isNaN(start.getTime())) {
+        dateRange.$gte = start;
+      }
+    }
+
+    if (toDate) {
+      const end = new Date(`${toDate}T23:59:59.999Z`);
+      if (!Number.isNaN(end.getTime())) {
+        dateRange.$lte = end;
+      }
+    }
+
+    if ((fromDate && !dateRange.$gte) || (toDate && !dateRange.$lte)) {
+      res.status(400);
+      throw new Error('Valid fromDate/toDate are required');
+    }
+
+    if (dateRange.$gte || dateRange.$lte) {
+      rangeConditions.push({ saleDate: dateRange }, { date: dateRange });
+    }
+  }
+
+  const query = {
+    pendingAmount: { $gt: 0 },
+    ...(rangeConditions.length ? { $or: rangeConditions } : {}),
+  };
+
+  const pendingSales = await OfflineSale.find(query).sort({ saleDate: 1, createdAt: 1 });
+
+  const normalizedEntries = pendingSales
+    .map((sale) => {
+      const totalSale = Number(sale.totalSale || 0);
+      const pendingAmount = Number(sale.pendingAmount || 0);
+      const paidAmount = totalSale - pendingAmount;
+      const saleDate = sale.saleDate || sale.date || null;
+
+      return {
+        _id: sale._id,
+        date: saleDate,
+        customerName: sale.customerName || '',
+        productName: sale.productName || '',
+        totalSale,
+        paidAmount,
+        pendingAmount,
+        paymentMode: sale.paymentMode || '',
+        notes: sale.notes || '',
+      };
+    })
+    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+  const totalPendingAmount = normalizedEntries.reduce(
+    (sum, sale) => sum + Number(sale.pendingAmount || 0),
+    0
+  );
+  const totalPendingEntries = normalizedEntries.length;
+  const totalUniqueCustomers = new Set(
+    normalizedEntries
+      .map((sale) => String(sale.customerName || '').trim())
+      .filter(Boolean)
+  ).size;
+
+  res.json({
+    pendingPayments: normalizedEntries,
+    summary: {
+      totalPendingAmount,
+      totalPendingEntries,
+      totalUniqueCustomers,
+    },
+  });
+};

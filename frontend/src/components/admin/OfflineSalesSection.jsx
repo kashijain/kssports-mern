@@ -27,6 +27,12 @@ const emptySummary = {
   totalQuantitySold: 0,
 };
 
+const emptyPendingSummary = {
+  totalPendingAmount: 0,
+  totalPendingEntries: 0,
+  totalUniqueCustomers: 0,
+};
+
 const createEmptyForm = () => ({
   saleDate: getToday(),
   productId: '',
@@ -44,7 +50,10 @@ const OfflineSalesSection = () => {
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [summary, setSummary] = useState(emptySummary);
+  const [pendingPayments, setPendingPayments] = useState([]);
+  const [pendingSummary, setPendingSummary] = useState(emptyPendingSummary);
   const [loadingSales, setLoadingSales] = useState(false);
+  const [loadingPending, setLoadingPending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingSheet, setUploadingSheet] = useState(false);
   const [sheetFile, setSheetFile] = useState(null);
@@ -137,12 +146,66 @@ const OfflineSalesSection = () => {
     }
   };
 
+  const getPendingDateRangeParams = (activeFilters = appliedFilters) => {
+    if (activeFilters.date) {
+      return {
+        fromDate: activeFilters.date,
+        toDate: activeFilters.date,
+      };
+    }
+
+    if (activeFilters.month) {
+      const [year, month] = activeFilters.month.split('-').map(Number);
+
+      if (!year || !month) {
+        return {};
+      }
+
+      const start = `${activeFilters.month}-01`;
+      const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const end = `${activeFilters.month}-${String(lastDay).padStart(2, '0')}`;
+
+      return {
+        fromDate: start,
+        toDate: end,
+      };
+    }
+
+    return {
+      ...(activeFilters.from ? { fromDate: activeFilters.from } : {}),
+      ...(activeFilters.to ? { toDate: activeFilters.to } : {}),
+    };
+  };
+
+  const loadPendingPayments = async (activeFilters = appliedFilters) => {
+    setLoadingPending(true);
+
+    try {
+      const params = new URLSearchParams(getPendingDateRangeParams(activeFilters));
+      const query = params.toString();
+      const { data } = await api.get(
+        `/admin/offline-sales/pending${query ? `?${query}` : ''}`
+      );
+
+      setPendingPayments(data.pendingPayments || []);
+      setPendingSummary(data.summary || emptyPendingSummary);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to load pending payments');
+    } finally {
+      setLoadingPending(false);
+    }
+  };
+
   useEffect(() => {
     loadProducts();
   }, []);
 
   useEffect(() => {
     loadSales(appliedFilters);
+  }, [appliedFilters]);
+
+  useEffect(() => {
+    loadPendingPayments(appliedFilters);
   }, [appliedFilters]);
 
   const handleProductChange = (productId) => {
@@ -427,6 +490,86 @@ const OfflineSalesSection = () => {
             )}
           </div>
         )}
+      </section>
+
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Recovery Desk</p>
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Pending Payments</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Track unpaid counter entries from the current filter window without leaving the Offline Sales page.
+            </p>
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+            {loadingPending ? 'Loading pending data...' : `${pendingSummary.totalPendingEntries || 0} pending entries`}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          {[
+            ['Total Pending Amount', formatPrice(pendingSummary.totalPendingAmount || 0), 'text-amber-300'],
+            ['Pending Entries', pendingSummary.totalPendingEntries || 0, 'text-white'],
+            ['Unique Customers', pendingSummary.totalUniqueCustomers || 0, 'text-sky-300'],
+          ].map(([label, value, tone]) => (
+            <div
+              key={label}
+              className="rounded-[1.5rem] border border-white/10 bg-[#151b24] p-5 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]"
+            >
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{label}</p>
+              <p className={`mt-3 text-2xl font-black ${tone}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="overflow-x-auto rounded-[1.75rem] border border-white/10 bg-[#151b24]">
+          <table className="min-w-full text-left">
+            <thead>
+              <tr className="bg-white/[0.02] text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">
+                <th className="px-6 py-5">Date</th>
+                <th className="px-6 py-5">Customer Name</th>
+                <th className="px-6 py-5">Product Name</th>
+                <th className="px-6 py-5 text-center">Total Sale</th>
+                <th className="px-6 py-5 text-center">Paid Amount</th>
+                <th className="px-6 py-5 text-center">Pending Amount</th>
+                <th className="px-6 py-5 text-center">Payment Mode</th>
+                <th className="px-6 py-5">Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {loadingPending ? (
+                <tr>
+                  <td colSpan="8" className="px-6 py-12 text-center text-sm text-slate-500">
+                    Loading pending payments...
+                  </td>
+                </tr>
+              ) : pendingPayments.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="px-6 py-12 text-center text-sm text-slate-500">
+                    No pending payments found
+                  </td>
+                </tr>
+              ) : (
+                pendingPayments.map((sale) => (
+                  <tr key={sale._id} className="bg-amber-500/[0.04] transition-colors hover:bg-amber-500/[0.08]">
+                    <td className="px-6 py-5 text-sm text-slate-300">{sale.date?.slice(0, 10) || '-'}</td>
+                    <td className="px-6 py-5 text-sm font-semibold text-white">{sale.customerName || '-'}</td>
+                    <td className="px-6 py-5 text-sm text-slate-300">{sale.productName || '-'}</td>
+                    <td className="px-6 py-5 text-center text-sm font-semibold text-white">{formatPrice(sale.totalSale)}</td>
+                    <td className="px-6 py-5 text-center text-sm font-semibold text-emerald-300">{formatPrice(sale.paidAmount)}</td>
+                    <td className="px-6 py-5 text-center text-sm font-bold text-red-300">{formatPrice(sale.pendingAmount)}</td>
+                    <td className="px-6 py-5 text-center">
+                      <span className="inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-amber-300">
+                        {sale.paymentMode || 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-sm text-slate-400">{sale.notes || '-'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">

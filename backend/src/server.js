@@ -64,6 +64,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin-inventory', adminInventoryRoutes);
+app.use('/api/admin', adminInventoryRoutes);
 app.use('/api/admin-reports', adminReportRoutes);
 app.use('/api/admin', adminReportRoutes);
 app.use('/api/bat-repairs', batRepairRoutes);
