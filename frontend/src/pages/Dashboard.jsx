@@ -581,7 +581,6 @@ const Dashboard=()=>{
     ['offline-sales','/admin/offline-sales',ReceiptIndianRupee,'Offline Sales'],
     ['business-summary','/admin/business-summary',BarChart3,'Summary'],
     ['orders','/admin/orders',Users,'Orders'],
-    ['upload-stock-sheet','/admin/upload-stock-sheet',FileSpreadsheet,'Upload Stock Sheet'],
     ['bat-repair','/admin/bat-repair',Wrench,'Bat Repair'],
     ['expenses','/admin/expenses',Wallet,'Expenses'],
     ['sales-report','/admin/sales-report',BarChart3,'Sales Report']

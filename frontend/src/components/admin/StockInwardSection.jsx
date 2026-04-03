@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/price';
+import UploadStockSheetSection from './UploadStockSheetSection';
 
 const DRAFT_KEY = 'ks-sports-purchase-bill-draft';
 const categoryOptions = ['Bat', 'Ball', 'Gloves', 'Accessories', 'Sleeves', 'Shaker', 'Other'];
@@ -160,6 +161,7 @@ const StockInwardSection = () => {
   const [targetRowId, setTargetRowId] = useState('');
   const [quickProductForm, setQuickProductForm] = useState(emptyQuickProduct());
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [entryMode, setEntryMode] = useState('manual');
 
   const computedItems = useMemo(
     () =>
@@ -561,8 +563,32 @@ const StockInwardSection = () => {
             </article>
           ))}
         </div>
+
+        <div className="mt-8 inline-flex w-full rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-2 sm:w-auto">
+          {[
+            ['manual', 'Manual Entry'],
+            ['upload', 'Upload Sheet'],
+          ].map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setEntryMode(mode)}
+              className={`flex-1 rounded-[1.15rem] px-5 py-3 text-sm font-bold transition-all sm:flex-none ${
+                entryMode === mode
+                  ? 'bg-primary-600 text-white shadow-[0_16px_36px_-20px_rgba(220,38,38,0.8)]'
+                  : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </section>
 
+      {entryMode === 'upload' ? (
+        <UploadStockSheetSection />
+      ) : (
+        <>
       <form className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.7fr)_400px]" onSubmit={submitBill}>
         <div className="space-y-8">
           <section className={cardClass}>
@@ -933,6 +959,8 @@ const StockInwardSection = () => {
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
