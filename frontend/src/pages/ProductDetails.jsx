@@ -1,5 +1,5 @@
 ﻿import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useCartStore, useProductStore } from '../store/useStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import {
@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Heart,
   Share2,
+  ChevronLeft,
   ChevronRight,
   Check,
   ShoppingCart,
@@ -16,6 +17,7 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
 import { formatPrice } from '../utils/price';
@@ -25,6 +27,7 @@ const ProductDetails = () => {
   const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
   const [activeImage, setActiveImage] = useState(0);
+  const imageTouchStartX = useRef(null);
   const navigate = useNavigate();
 
   const { addToCart } = useCartStore();
@@ -41,16 +44,25 @@ const ProductDetails = () => {
     toast.success(`${qty} x ${product.name} added to cart`);
   };
 
-  const galleryImages =
-    product?.images?.length > 0
-      ? product.images.map((image) => getImageUrl(image))
-      : [getPrimaryProductImage(product)];
+  const galleryImages = useMemo(
+    () =>
+      product?.images?.length > 0
+        ? product.images.map((image) => getImageUrl(image))
+        : [getPrimaryProductImage(product)],
+    [product]
+  );
 
-  const productFeatures =
-    product?.features?.filter((feature) => String(feature || '').trim()) || [];
+  const hasMultipleImages = galleryImages.length > 1;
 
-  const productSpecifications =
-    product?.specifications?.filter((spec) => spec?.name && spec?.value) || [];
+  const productFeatures = useMemo(
+    () => product?.features?.filter((feature) => String(feature || '').trim()) || [],
+    [product]
+  );
+
+  const productSpecifications = useMemo(
+    () => product?.specifications?.filter((spec) => spec?.name && spec?.value) || [],
+    [product]
+  );
 
   const quickHighlights = useMemo(() => {
     const derived = [];
@@ -63,7 +75,7 @@ const ProductDetails = () => {
     }
 
     return [...new Set(derived.filter(Boolean))].slice(0, 4);
-  }, [product?.brand, product?.category, productFeatures, productSpecifications]);
+  }, [product, productFeatures, productSpecifications]);
 
   const performanceCards = useMemo(() => {
     const cards = [];
@@ -106,7 +118,7 @@ const ProductDetails = () => {
       { name: 'Availability', value: product?.countInStock > 0 ? 'In Stock' : 'Out of Stock' },
       { name: 'Quality', value: 'Premium Finish' },
     ];
-  }, [productSpecifications, product?.brand, product?.category, product?.countInStock]);
+  }, [product, productSpecifications]);
 
   if (loading || !product)
     return (
@@ -140,6 +152,58 @@ const ProductDetails = () => {
       toast.success('Removed from wishlist');
     } else if (result.added) {
       toast.success('Added to wishlist');
+    }
+  };
+
+  const goToNextImage = () => {
+    if (!hasMultipleImages) return;
+    setActiveImage((current) => (current + 1) % galleryImages.length);
+  };
+
+  const goToPrevImage = () => {
+    if (!hasMultipleImages) return;
+    setActiveImage((current) => (current - 1 + galleryImages.length) % galleryImages.length);
+  };
+
+  const handleGalleryTouchStart = (event) => {
+    imageTouchStartX.current = event.touches?.[0]?.clientX ?? null;
+  };
+
+  const handleGalleryTouchEnd = (event) => {
+    if (!hasMultipleImages || imageTouchStartX.current === null) return;
+
+    const endX = event.changedTouches?.[0]?.clientX ?? imageTouchStartX.current;
+    const distanceX = endX - imageTouchStartX.current;
+    imageTouchStartX.current = null;
+
+    if (Math.abs(distanceX) < 40) return;
+
+    if (distanceX < 0) {
+      goToNextImage();
+    } else {
+      goToPrevImage();
+    }
+  };
+
+  const handleShareProduct = async () => {
+    const shareData = {
+      title: product.name,
+      text: `Check out this product from K.S. Sports: ${product.name}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Product link copied');
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        toast.error('Unable to share product');
+      }
     }
   };
 
@@ -206,7 +270,11 @@ const ProductDetails = () => {
               </div>
 
               <div className="order-1 rounded-[2rem] border border-white/10 bg-white/[0.04] p-3 md:order-2">
-                <div className="group relative aspect-[4/5] overflow-hidden rounded-[1.7rem] bg-[#080b10]">
+                <div
+                  className="group relative aspect-[4/5] overflow-hidden rounded-[1.7rem] bg-[#080b10]"
+                  onTouchStart={handleGalleryTouchStart}
+                  onTouchEnd={handleGalleryTouchEnd}
+                >
                   <AnimatePresence mode="wait">
                     <motion.img
                       key={activeImage}
@@ -226,6 +294,30 @@ const ProductDetails = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/10 to-transparent"></div>
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(220,38,38,0.22),transparent_26%)]"></div>
 
+                  {hasMultipleImages && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={goToPrevImage}
+                        aria-label="Previous product image"
+                        className="absolute left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/75 text-white backdrop-blur-md transition-all hover:scale-105 hover:text-primary-400"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goToNextImage}
+                        aria-label="Next product image"
+                        className="absolute right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/75 text-white backdrop-blur-md transition-all hover:scale-105 hover:text-primary-400"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                      <div className="absolute bottom-5 right-5 z-10 rounded-full border border-white/10 bg-slate-950/75 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md">
+                        {activeImage + 1} / {galleryImages.length}
+                      </div>
+                    </>
+                  )}
+
                   <div className="absolute right-5 top-5 z-10 flex flex-col gap-3">
                     <button
                       onClick={handleWishlistToggle}
@@ -233,7 +325,12 @@ const ProductDetails = () => {
                     >
                       <Heart size={20} className={isWishlisted ? 'fill-red-500 text-red-500' : ''} />
                     </button>
-                    <button className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/75 text-white backdrop-blur-md transition-all hover:scale-105 hover:text-primary-400">
+                    <button
+                      type="button"
+                      onClick={handleShareProduct}
+                      aria-label="Share product"
+                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/75 text-white backdrop-blur-md transition-all hover:scale-105 hover:text-primary-400"
+                    >
                       <Share2 size={20} />
                     </button>
                   </div>
