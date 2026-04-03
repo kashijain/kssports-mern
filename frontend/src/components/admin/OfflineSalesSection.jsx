@@ -10,11 +10,13 @@ import {
   Filter,
   Package,
   Pencil,
+  ReceiptText,
   Trash2,
   Wallet,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/price';
+import BillModal from './BillModal';
 
 const paymentModes = ['Cash', 'Online', 'Pending'];
 
@@ -62,6 +64,7 @@ const OfflineSalesSection = () => {
   const [filters, setFilters] = useState({ date: '', month: '', from: '', to: '' });
   const [appliedFilters, setAppliedFilters] = useState({ date: '', month: '', from: '', to: '' });
   const [form, setForm] = useState(createEmptyForm());
+  const [billPreviewSale, setBillPreviewSale] = useState(null);
 
   const selectedProduct = useMemo(
     () => products.find((item) => item._id === form.productId) || null,
@@ -77,14 +80,6 @@ const OfflineSalesSection = () => {
     [form.quantitySold, form.costPricePerItem]
   );
   const profit = useMemo(() => totalSale - totalCost, [totalSale, totalCost]);
-  const pendingAmount = useMemo(() => {
-    if (form.paymentMode !== 'Pending') {
-      return 0;
-    }
-
-    const value = Number(form.pendingAmount);
-    return Number.isFinite(value) && value >= 0 ? value : 0;
-  }, [form.paymentMode, form.pendingAmount]);
   const pendingBalance = useMemo(
     () => sales.reduce((sum, sale) => sum + (Number(sale.pendingAmount) || 0), 0),
     [sales]
@@ -202,10 +197,12 @@ const OfflineSalesSection = () => {
 
   useEffect(() => {
     loadSales(appliedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters]);
 
   useEffect(() => {
     loadPendingPayments(appliedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters]);
 
   const handleProductChange = (productId) => {
@@ -221,7 +218,7 @@ const OfflineSalesSection = () => {
     }));
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event, shouldOpenBill = false) => {
     event.preventDefault();
     const normalizedPendingAmount = form.paymentMode === 'Pending' ? Number(form.pendingAmount) : 0;
 
@@ -255,12 +252,20 @@ const OfflineSalesSection = () => {
     };
 
     try {
+      let savedSale = null;
+
       if (editingSaleId) {
-        await api.put(`/admin-inventory/offline-sales/${editingSaleId}`, payload);
+        const { data } = await api.put(`/admin-inventory/offline-sales/${editingSaleId}`, payload);
+        savedSale = data.sale || null;
         toast.success('Offline sale updated');
       } else {
-        await api.post('/admin-inventory/offline-sales', payload);
+        const { data } = await api.post('/admin-inventory/offline-sales', payload);
+        savedSale = data.sale || null;
         toast.success('Offline sale saved');
+      }
+
+      if (shouldOpenBill && savedSale) {
+        setBillPreviewSale(savedSale);
       }
 
       resetForm();
@@ -758,6 +763,15 @@ const OfflineSalesSection = () => {
               </button>
             )}
             <button
+              type="button"
+              onClick={(event) => handleSubmit(event, true)}
+              disabled={submitting}
+              className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-6 py-3 text-sm font-black uppercase tracking-[0.18em] text-amber-200 transition-all hover:border-amber-500/30 hover:bg-amber-500/15 disabled:opacity-60"
+            >
+              <ReceiptText size={16} />
+              Generate Bill
+            </button>
+            <button
               type="submit"
               disabled={submitting}
               className="rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60"
@@ -933,6 +947,14 @@ const OfflineSalesSection = () => {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
+                        onClick={() => setBillPreviewSale(sale)}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-200 transition-all hover:bg-amber-500/15"
+                      >
+                        <ReceiptText size={14} />
+                        Bill
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleEdit(sale)}
                         className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"
                       >
@@ -979,6 +1001,8 @@ const OfflineSalesSection = () => {
           </button>
         </div>
       </section>
+
+      <BillModal sale={billPreviewSale} onClose={() => setBillPreviewSale(null)} />
     </div>
   );
 };
