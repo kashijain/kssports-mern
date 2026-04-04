@@ -254,38 +254,6 @@ const getCategoryTemplate = (category = '') =>
   CATEGORY_DETAIL_TEMPLATES[normalizeGeneratedText(category)] ||
   CATEGORY_DETAIL_TEMPLATES.Other;
 
-const normalizeBooleanFlag = (value, fallback = false) => {
-  if (value === undefined || value === null || value === '') {
-    return fallback;
-  }
-
-  return value === true || value === 'true' || value === 'on';
-};
-
-const normalizeUnitMetadata = (body = {}, currentProduct = null) => {
-  const pieceEnabled = normalizeBooleanFlag(
-    body.pieceEnabled,
-    currentProduct?.pieceEnabled !== undefined ? currentProduct.pieceEnabled : true
-  );
-  const boxEnabled = normalizeBooleanFlag(
-    body.boxEnabled,
-    currentProduct?.boxEnabled !== undefined ? currentProduct.boxEnabled : false
-  );
-  const piecesPerBoxValue =
-    body.piecesPerBox !== undefined
-      ? Number(body.piecesPerBox)
-      : Number(currentProduct?.piecesPerBox || 1);
-  const piecesPerBox = Number.isFinite(piecesPerBoxValue)
-    ? Math.max(Math.trunc(piecesPerBoxValue), 1)
-    : 1;
-
-  return {
-    pieceEnabled: pieceEnabled || !boxEnabled,
-    boxEnabled,
-    piecesPerBox,
-  };
-};
-
 export const generateProductDetails = async (req, res) => {
   const name = normalizeGeneratedText(req.body.name);
   const category = normalizeGeneratedText(req.body.category);
@@ -354,7 +322,6 @@ export const createProduct = async (req, res) => {
   const images = uploadedImages.length ? uploadedImages : getIncomingImages(req);
   const specifications = getIncomingSpecifications(req);
   const features = getIncomingFeatures(req);
-  const unitMetadata = normalizeUnitMetadata(req.body);
 
   if (!images.length) {
     res.status(400);
@@ -371,8 +338,10 @@ export const createProduct = async (req, res) => {
     brand: brand.trim(),
     category: category.trim(),
     countInStock: Number(countInStock) || 0,
-    ...unitMetadata,
-    codAvailable: normalizeBooleanFlag(codAvailable, true),
+    codAvailable:
+      codAvailable === true ||
+      codAvailable === 'true' ||
+      codAvailable === 'on',
     features,
     specifications,
     numReviews: 0,
@@ -410,11 +379,12 @@ export const updateProduct = async (req, res) => {
     req.body.countInStock !== undefined
       ? Number(req.body.countInStock)
       : product.countInStock;
-  const unitMetadata = normalizeUnitMetadata(req.body, product);
-  product.pieceEnabled = unitMetadata.pieceEnabled;
-  product.boxEnabled = unitMetadata.boxEnabled;
-  product.piecesPerBox = unitMetadata.piecesPerBox;
-  product.codAvailable = normalizeBooleanFlag(req.body.codAvailable, product.codAvailable);
+  product.codAvailable =
+    req.body.codAvailable !== undefined
+      ? req.body.codAvailable === true ||
+        req.body.codAvailable === 'true' ||
+        req.body.codAvailable === 'on'
+      : product.codAvailable;
   product.features = featuresProvided ? incomingFeatures : product.features;
   product.specifications = specificationsProvided
     ? incomingSpecifications

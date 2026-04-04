@@ -119,37 +119,6 @@ const normalizeSaleDateInput = (value) => {
   return dateValue;
 };
 
-const getAllowedProductUnits = (product) => {
-  const allowedUnits = [];
-
-  if (product?.pieceEnabled !== false) {
-    allowedUnits.push('Piece');
-  }
-
-  if (product?.boxEnabled === true) {
-    allowedUnits.push('Box');
-  }
-
-  return allowedUnits.length ? allowedUnits : ['Piece'];
-};
-
-const normalizeSaleUnitType = (unitType, product) => {
-  const normalizedUnitType = toTrimmedString(unitType) === 'Box' ? 'Box' : 'Piece';
-  const allowedUnits = getAllowedProductUnits(product);
-  return allowedUnits.includes(normalizedUnitType) ? normalizedUnitType : allowedUnits[0];
-};
-
-const getPiecesPerBoxValue = (product) => {
-  const numericValue = Number(product?.piecesPerBox || 1);
-  return Number.isFinite(numericValue) ? Math.max(Math.trunc(numericValue), 1) : 1;
-};
-
-const getStockDeductionQuantity = (item = {}) => {
-  const quantity = Number(item.quantity ?? item.quantitySold ?? 0) || 0;
-  const piecesPerBox = Math.max(Number(item.piecesPerBox || 1) || 1, 1);
-  return item.unitType === 'Box' ? quantity * piecesPerBox : quantity;
-};
-
 const normalizePaymentMode = (value, { strict = false } = {}) => {
   const normalizedValue = normalizeLookupName(value);
   if (!normalizedValue) {
@@ -414,7 +383,6 @@ const normalizeOfflineSalePayload = async ({
   productId,
   productName,
   quantitySold,
-  unitType,
   salePricePerItem,
   costPricePerItem,
   pendingAmount,
@@ -476,8 +444,6 @@ const normalizeOfflineSalePayload = async ({
     costPricePerItem !== undefined && costPricePerItem !== null && costPricePerItem !== ''
       ? Number(costPricePerItem)
       : Number(product.costPrice);
-  const normalizedUnitType = normalizeSaleUnitType(unitType, product);
-  const normalizedPiecesPerBox = getPiecesPerBoxValue(product);
 
   const totalSale = normalizedQuantity * normalizedSalePrice;
 
@@ -501,8 +467,6 @@ const normalizeOfflineSalePayload = async ({
     productName: product.name,
     saleDate: normalizedSaleDate,
     quantitySold: normalizedQuantity,
-    unitType: normalizedUnitType,
-    piecesPerBox: normalizedPiecesPerBox,
     salePricePerItem: normalizedSalePrice,
     costPricePerItem: resolvedCostPrice,
     totalSale,
@@ -575,8 +539,6 @@ const normalizeOfflineSaleBillPayload = async ({
       item?.costPrice !== undefined && item?.costPrice !== null && item?.costPrice !== ''
         ? Number(item.costPrice)
         : Number(product.costPrice || 0);
-    const normalizedUnitType = normalizeSaleUnitType(item?.unitType, product);
-    const normalizedPiecesPerBox = getPiecesPerBoxValue(product);
 
     if (!Number.isFinite(normalizedCostPrice) || normalizedCostPrice < 0) {
       throw new Error(`Cost Price must be 0 or more for item ${index + 1}`);
@@ -589,8 +551,6 @@ const normalizeOfflineSaleBillPayload = async ({
       product,
       productName: product.name,
       quantity: normalizedQuantity,
-      unitType: normalizedUnitType,
-      piecesPerBox: normalizedPiecesPerBox,
       salePrice: normalizedSalePrice,
       costPrice: normalizedCostPrice,
       totalSale,
@@ -628,8 +588,6 @@ const normalizeOfflineSaleBillPayload = async ({
         ? normalizedItems[0].productName
         : `${normalizedItems[0].productName} +${normalizedItems.length - 1} more`,
     quantitySold: totalQuantitySold,
-    unitType: normalizedItems[0]?.unitType || 'Piece',
-    piecesPerBox: normalizedItems[0]?.piecesPerBox || 1,
     salePricePerItem: normalizedItems[0]?.salePrice || 0,
     costPricePerItem: normalizedItems[0]?.costPrice || 0,
     totalSale,
@@ -643,7 +601,7 @@ const adjustInventoryForItems = async (items = [], operation = -1) => {
 
   try {
     for (const item of items) {
-      const quantity = getStockDeductionQuantity(item);
+      const quantity = Number(item.quantity || 0);
 
       if (!item.product?._id || !quantity) {
         continue;
@@ -662,7 +620,7 @@ const adjustInventoryForItems = async (items = [], operation = -1) => {
         if (!updatedProduct) {
           const latestProduct = await Product.findById(item.product._id).select('countInStock name');
           throw new Error(
-            `Insufficient stock for "${latestProduct?.name || item.productName}". Requested qty: ${quantity} piece(s), available stock: ${latestProduct?.countInStock ?? 0}`
+            `Insufficient stock for "${latestProduct?.name || item.productName}". Requested qty: ${quantity}, available stock: ${latestProduct?.countInStock ?? 0}`
           );
         }
       } else {
@@ -680,7 +638,7 @@ const adjustInventoryForItems = async (items = [], operation = -1) => {
     for (const item of touchedItems.reverse()) {
       await Product.updateOne(
         { _id: item.product._id },
-        { $inc: { countInStock: rollbackOperation * getStockDeductionQuantity(item) } }
+        { $inc: { countInStock: rollbackOperation * Number(item.quantity || 0) } }
       );
     }
 
@@ -694,8 +652,6 @@ const getSaleItemsSnapshot = (sale) => {
       product: item.product,
       productName: item.productName,
       quantity: Number(item.quantity || 0),
-      unitType: item.unitType || 'Piece',
-      piecesPerBox: Number(item.piecesPerBox || 1) || 1,
       salePrice: Number(item.salePrice || 0),
       costPrice: Number(item.costPrice || 0),
       totalSale: Number(item.totalSale || 0),
@@ -710,8 +666,6 @@ const getSaleItemsSnapshot = (sale) => {
         product: sale.product,
         productName: sale.productName,
         quantity: Number(sale.quantitySold || 0),
-        unitType: sale.unitType || 'Piece',
-        piecesPerBox: Number(sale.piecesPerBox || 1) || 1,
         salePrice: Number(sale.salePricePerItem || 0),
         costPrice: Number(sale.costPricePerItem || 0),
         totalSale: Number(sale.totalSale || 0),
@@ -732,8 +686,6 @@ const buildBillSaleDocument = (normalizedSale, userId) => ({
   productName: normalizedSale.productName,
   saleDate: normalizedSale.saleDate,
   quantitySold: normalizedSale.quantitySold,
-  unitType: normalizedSale.unitType || 'Piece',
-  piecesPerBox: normalizedSale.piecesPerBox || 1,
   salePricePerItem: normalizedSale.salePricePerItem,
   totalSale: normalizedSale.totalSale,
   costPricePerItem: normalizedSale.costPricePerItem,
@@ -743,8 +695,6 @@ const buildBillSaleDocument = (normalizedSale, userId) => ({
     product: item.product._id,
     productName: item.productName,
     quantity: item.quantity,
-    unitType: item.unitType || 'Piece',
-    piecesPerBox: item.piecesPerBox || 1,
     salePrice: item.salePrice,
     costPrice: item.costPrice,
     totalSale: item.totalSale,
@@ -793,8 +743,6 @@ const updateOfflineSaleBillRecord = async (existingSale, normalizedSale) => {
   existingSale.productName = normalizedSale.productName;
   existingSale.saleDate = normalizedSale.saleDate;
   existingSale.quantitySold = normalizedSale.quantitySold;
-  existingSale.unitType = normalizedSale.unitType || 'Piece';
-  existingSale.piecesPerBox = normalizedSale.piecesPerBox || 1;
   existingSale.salePricePerItem = normalizedSale.salePricePerItem;
   existingSale.totalSale = normalizedSale.totalSale;
   existingSale.costPricePerItem = normalizedSale.costPricePerItem;
@@ -804,8 +752,6 @@ const updateOfflineSaleBillRecord = async (existingSale, normalizedSale) => {
     product: item.product._id,
     productName: item.productName,
     quantity: item.quantity,
-    unitType: item.unitType || 'Piece',
-    piecesPerBox: item.piecesPerBox || 1,
     salePrice: item.salePrice,
     costPrice: item.costPrice,
     totalSale: item.totalSale,
@@ -842,8 +788,6 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
       productName: normalizedSale.productName,
       saleDate: normalizedSale.saleDate,
       quantitySold: normalizedSale.quantitySold ?? 0,
-      unitType: normalizedSale.unitType || 'Piece',
-      piecesPerBox: normalizedSale.piecesPerBox || 1,
       salePricePerItem: normalizedSale.salePricePerItem ?? 0,
       totalSale: normalizedSale.totalSale ?? 0,
       costPricePerItem: normalizedSale.costPricePerItem ?? 0,
@@ -870,8 +814,6 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
       productName: normalizedSale.productName,
       saleDate: normalizedSale.saleDate,
       quantitySold: normalizedSale.quantitySold,
-      unitType: normalizedSale.unitType || 'Piece',
-      piecesPerBox: normalizedSale.piecesPerBox || 1,
       salePricePerItem: normalizedSale.salePricePerItem,
       totalSale: normalizedSale.totalSale,
       costPricePerItem: normalizedSale.costPricePerItem,
@@ -889,20 +831,19 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
     return { sale, productStock: null };
   }
 
-  const stockQuantity = getStockDeductionQuantity(normalizedSale);
   const updatedProduct = await Product.findOneAndUpdate(
     {
       _id: normalizedSale.product._id,
-      countInStock: { $gte: stockQuantity },
+      countInStock: { $gte: normalizedSale.quantitySold },
     },
-    { $inc: { countInStock: -stockQuantity } },
+    { $inc: { countInStock: -normalizedSale.quantitySold } },
     { new: true }
   );
 
   if (!updatedProduct) {
     const latestProduct = await Product.findById(normalizedSale.product._id).select('countInStock');
     throw new Error(
-      `Insufficient stock for this offline sale. Requested qty: ${stockQuantity}, available stock: ${latestProduct?.countInStock ?? 0}`
+      `Insufficient stock for this offline sale. Requested qty: ${normalizedSale.quantitySold}, available stock: ${latestProduct?.countInStock ?? 0}`
     );
   }
 
@@ -915,8 +856,6 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
       productName: updatedProduct.name,
       saleDate: normalizedSale.saleDate,
       quantitySold: normalizedSale.quantitySold,
-      unitType: normalizedSale.unitType || 'Piece',
-      piecesPerBox: normalizedSale.piecesPerBox || 1,
       salePricePerItem: normalizedSale.salePricePerItem,
       totalSale: normalizedSale.totalSale,
       costPricePerItem: normalizedSale.costPricePerItem,
@@ -938,7 +877,7 @@ const createOfflineSaleRecord = async (normalizedSale, userId) => {
   } catch (error) {
     await Product.updateOne(
       { _id: normalizedSale.product._id },
-      { $inc: { countInStock: stockQuantity } }
+      { $inc: { countInStock: normalizedSale.quantitySold } }
     );
     throw error;
   }
@@ -953,8 +892,6 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
     existingSale.productName = normalizedSale.productName;
     existingSale.saleDate = normalizedSale.saleDate;
     existingSale.quantitySold = normalizedSale.quantitySold;
-    existingSale.unitType = normalizedSale.unitType || 'Piece';
-    existingSale.piecesPerBox = normalizedSale.piecesPerBox || 1;
     existingSale.salePricePerItem = normalizedSale.salePricePerItem;
     existingSale.totalSale = normalizedSale.totalSale;
     existingSale.costPricePerItem = normalizedSale.costPricePerItem;
@@ -974,14 +911,13 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
   const oldProductId = String(existingSale.product);
   const newProductId = String(normalizedSale.product._id);
   const oldProductRef = existingSale.product;
-  const oldStockQuantity = getStockDeductionQuantity(existingSale);
-  const newStockQuantity = getStockDeductionQuantity(normalizedSale);
+  const oldQuantitySold = existingSale.quantitySold;
   let sameProductStockDelta = 0;
   let restoredOldProduct = false;
   let reducedNewProduct = false;
 
   if (oldProductId === newProductId) {
-    sameProductStockDelta = newStockQuantity - oldStockQuantity;
+    sameProductStockDelta = normalizedSale.quantitySold - existingSale.quantitySold;
 
     if (sameProductStockDelta > 0) {
       const updatedProduct = await Product.findOneAndUpdate(
@@ -996,7 +932,7 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
       if (!updatedProduct) {
         const latestProduct = await Product.findById(normalizedSale.product._id).select('countInStock');
         throw new Error(
-          `Insufficient stock for this offline sale. Requested qty: ${newStockQuantity}, available stock: ${latestProduct?.countInStock ?? 0}`
+          `Insufficient stock for this offline sale. Requested qty: ${normalizedSale.quantitySold}, available stock: ${latestProduct?.countInStock ?? 0}`
         );
       }
     } else if (sameProductStockDelta < 0) {
@@ -1009,16 +945,16 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
     const updatedNewProduct = await Product.findOneAndUpdate(
       {
         _id: normalizedSale.product._id,
-        countInStock: { $gte: newStockQuantity },
+        countInStock: { $gte: normalizedSale.quantitySold },
       },
-      { $inc: { countInStock: -newStockQuantity } },
+      { $inc: { countInStock: -normalizedSale.quantitySold } },
       { new: true }
     );
 
     if (!updatedNewProduct) {
       const latestProduct = await Product.findById(normalizedSale.product._id).select('countInStock');
       throw new Error(
-        `Insufficient stock for this offline sale. Requested qty: ${newStockQuantity}, available stock: ${latestProduct?.countInStock ?? 0}`
+        `Insufficient stock for this offline sale. Requested qty: ${normalizedSale.quantitySold}, available stock: ${latestProduct?.countInStock ?? 0}`
       );
     }
 
@@ -1026,7 +962,7 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
 
     await Product.updateOne(
       { _id: oldProductRef },
-      { $inc: { countInStock: oldStockQuantity } }
+      { $inc: { countInStock: oldQuantitySold } }
     );
     restoredOldProduct = true;
   }
@@ -1035,8 +971,6 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
   existingSale.productName = normalizedSale.product.name;
   existingSale.saleDate = normalizedSale.saleDate;
   existingSale.quantitySold = normalizedSale.quantitySold;
-  existingSale.unitType = normalizedSale.unitType || 'Piece';
-  existingSale.piecesPerBox = normalizedSale.piecesPerBox || 1;
   existingSale.salePricePerItem = normalizedSale.salePricePerItem;
   existingSale.totalSale = normalizedSale.totalSale;
   existingSale.costPricePerItem = normalizedSale.costPricePerItem;
@@ -1069,14 +1003,14 @@ const updateOfflineSaleRecord = async (existingSale, normalizedSale) => {
       if (restoredOldProduct) {
         await Product.updateOne(
           { _id: oldProductRef },
-          { $inc: { countInStock: -oldStockQuantity } }
+          { $inc: { countInStock: -oldQuantitySold } }
         );
       }
 
       if (reducedNewProduct) {
         await Product.updateOne(
           { _id: normalizedSale.product._id },
-          { $inc: { countInStock: newStockQuantity } }
+          { $inc: { countInStock: normalizedSale.quantitySold } }
         );
       }
     }

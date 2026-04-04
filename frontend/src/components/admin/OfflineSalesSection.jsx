@@ -49,9 +49,6 @@ const createEmptyForm = () => ({
 const createEmptySaleItem = () => ({
   productId: '',
   productName: '',
-  unitType: 'Piece',
-  piecesPerBox: 1,
-  unitOptions: ['Piece'],
   quantity: '1',
   salePrice: '',
   costPrice: '',
@@ -62,53 +59,26 @@ const createEmptySaleItem = () => ({
   error: '',
 });
 
-const getProductUnitOptions = (product) => {
-  if (!product) {
-    return ['Piece'];
-  }
-
-  const options = [];
-
-  if (product.pieceEnabled !== false) {
-    options.push('Piece');
-  }
-
-  if (product.boxEnabled === true) {
-    options.push('Box');
-  }
-
-  return options.length ? options : ['Piece'];
-};
-
 const buildSaleItemState = (item, products) => {
   const product = products.find((entry) => entry._id === item.productId) || null;
-  const unitOptions = getProductUnitOptions(product);
-  const unitType = unitOptions.includes(item.unitType) ? item.unitType : unitOptions[0];
-  const piecesPerBox = Math.max(Number(product?.piecesPerBox || item.piecesPerBox || 1) || 1, 1);
-  const stockDivisor = unitType === 'Box' ? piecesPerBox : 1;
   const quantity = Number(item.quantity) || 0;
   const salePrice = Number(item.salePrice) || 0;
   const costPrice = Number(item.costPrice) || 0;
   const lineTotalSale = quantity * salePrice;
   const lineTotalCost = quantity * costPrice;
-  const availableStock = product
-    ? Math.floor((Number(product.countInStock ?? 0) || 0) / stockDivisor)
-    : item.availableStock;
+  const availableStock = product ? Number(product.countInStock ?? 0) : item.availableStock;
   let error = '';
 
   if (item.productId && !product) {
     error = 'Selected product was not found in inventory';
   } else if (product && quantity > availableStock) {
-    error = `Only ${availableStock} ${unitType.toLowerCase()}(s) available in stock`;
+    error = `Only ${availableStock} unit(s) available in stock`;
   }
 
   return {
     ...item,
     productId: item.productId || '',
     productName: product?.name || item.productName || '',
-    unitType,
-    piecesPerBox,
-    unitOptions,
     quantity: String(item.quantity ?? '1'),
     salePrice: String(item.salePrice ?? ''),
     costPrice: String(item.costPrice ?? ''),
@@ -314,14 +284,10 @@ const OfflineSalesSection = () => {
 
         if (field === 'productId') {
           const product = products.find((entry) => entry._id === value);
-          const unitOptions = getProductUnitOptions(product);
           nextItem = {
             ...nextItem,
             productId: value,
             productName: product?.name || '',
-            unitType: unitOptions.includes(item.unitType) ? item.unitType : unitOptions[0],
-            unitOptions,
-            piecesPerBox: Math.max(Number(product?.piecesPerBox || 1) || 1, 1),
             salePrice:
               product?.price !== undefined && product?.price !== null
                 ? String(product.price)
@@ -395,8 +361,6 @@ const OfflineSalesSection = () => {
       items: normalizedItems.map((item) => ({
         productId: item.productId,
         productName: item.productName,
-        unitType: item.unitType,
-        piecesPerBox: item.piecesPerBox,
         quantity: Number(item.quantity) || 0,
         salePrice: Number(item.salePrice) || 0,
         costPrice: Number(item.costPrice) || 0,
@@ -445,8 +409,6 @@ const OfflineSalesSection = () => {
             {
               productId: item.product?._id || item.product || '',
               productName: item.productName || '',
-              unitType: item.unitType || 'Piece',
-              piecesPerBox: item.piecesPerBox || 1,
               quantity: String(item.quantity ?? 1),
               salePrice: String(item.salePrice ?? ''),
               costPrice: String(item.costPrice ?? ''),
@@ -460,8 +422,6 @@ const OfflineSalesSection = () => {
             {
               productId: sale.product?._id || sale.product || '',
               productName: sale.productName || '',
-              unitType: sale.unitType || 'Piece',
-              piecesPerBox: sale.piecesPerBox || 1,
               quantity: String(sale.quantitySold ?? 1),
               salePrice: String(sale.salePricePerItem ?? ''),
               costPrice: String(sale.costPricePerItem ?? ''),
@@ -895,10 +855,9 @@ const OfflineSalesSection = () => {
               </div>
 
               <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-white/10 bg-[#0b0f15]/40">
-                <div className="min-w-[1180px] space-y-3 p-3 xl:min-w-0">
-                  <div className="sticky top-0 z-10 hidden grid-cols-[minmax(220px,2fr)_110px_90px_120px_120px_130px_130px_120px_56px] rounded-[1.25rem] border border-white/10 bg-[#121821]/95 px-4 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 backdrop-blur-xl xl:grid">
+                <div className="min-w-[1040px] space-y-3 p-3 xl:min-w-0">
+                  <div className="sticky top-0 z-10 hidden grid-cols-[minmax(260px,2fr)_90px_120px_120px_130px_130px_120px_56px] rounded-[1.25rem] border border-white/10 bg-[#121821]/95 px-4 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 backdrop-blur-xl xl:grid">
                     <span>Product</span>
-                    <span className="text-center">Unit</span>
                     <span className="text-center">Qty</span>
                     <span className="text-right">Sale</span>
                     <span className="text-right">Cost</span>

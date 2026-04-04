@@ -23,7 +23,7 @@ const OfflineSaleItemCard = ({
       index % 2 === 0 ? 'bg-white/[0.025]' : 'bg-white/[0.04]'
     }`}
   >
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(220px,2fr)_110px_90px_120px_120px_130px_130px_120px_56px] xl:items-end">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(260px,2fr)_90px_120px_120px_130px_130px_120px_56px] xl:items-end">
       <div className="min-w-0 space-y-2">
         <label className={mobileLabelClass}>Product</label>
         <select
@@ -42,24 +42,8 @@ const OfflineSaleItemCard = ({
           ))}
         </select>
         <p className="truncate text-xs font-semibold text-slate-500">
-          #{index + 1} {item.productName || 'Select Product'} | Stock: {item.availableStock ?? 0} {item.unitType?.toLowerCase() || 'piece'}(s)
+          #{index + 1} {item.productName || 'Select Product'} | Stock: {item.availableStock ?? 0}
         </p>
-      </div>
-
-      <div className="space-y-2">
-        <label className={mobileLabelClass}>Unit</label>
-        <select
-          value={item.unitType || 'Piece'}
-          onChange={(event) => onChange('unitType', event.target.value)}
-          className={inputBaseClass}
-          required
-        >
-          {(item.unitOptions?.length ? item.unitOptions : ['Piece']).map((unit) => (
-            <option key={unit} value={unit}>
-              {unit}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="space-y-2">
