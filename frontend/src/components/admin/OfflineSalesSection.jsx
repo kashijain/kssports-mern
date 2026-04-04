@@ -854,33 +854,18 @@ const OfflineSalesSection = () => {
                 </button>
               </div>
 
-              <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-white/10 bg-[#0b0f15]/40">
-                <div className="min-w-[1040px] space-y-3 p-3 xl:min-w-0">
-                  <div className="sticky top-0 z-10 hidden grid-cols-[minmax(260px,2fr)_90px_120px_120px_130px_130px_120px_56px] rounded-[1.25rem] border border-white/10 bg-[#121821]/95 px-4 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 backdrop-blur-xl xl:grid">
-                    <span>Product</span>
-                    <span className="text-center">Qty</span>
-                    <span className="text-right">Sale</span>
-                    <span className="text-right">Cost</span>
-                    <span className="text-right">Total Sale</span>
-                    <span className="text-right">Total Cost</span>
-                    <span className="text-right">Profit</span>
-                    <span className="text-center">Action</span>
-                  </div>
-
-                  <div className="space-y-3">
-                    {saleItems.map((item, index) => (
-                      <OfflineSaleItemCard
-                        key={`${item.productId || 'item'}-${index}`}
-                        item={item}
-                        index={index}
-                        products={products}
-                        canRemove={saleItems.length > 1}
-                        onChange={(field, value) => handleSaleItemChange(index, field, value)}
-                        onRemove={() => removeSaleItem(index)}
-                      />
-                    ))}
-                  </div>
-                </div>
+              <div className="mt-6 space-y-4">
+                {saleItems.map((item, index) => (
+                  <OfflineSaleItemCard
+                    key={`${item.productId || 'item'}-${index}`}
+                    item={item}
+                    index={index}
+                    products={products}
+                    canRemove={saleItems.length > 1}
+                    onChange={(field, value) => handleSaleItemChange(index, field, value)}
+                    onRemove={() => removeSaleItem(index)}
+                  />
+                ))}
               </div>
             </div>
           </div>
