@@ -24,10 +24,10 @@ const OfflineSaleItemCard = ({
 
         <div className="min-w-0">
           <p className="truncate text-sm font-black uppercase tracking-[0.18em] text-white">
-            Product {index + 1}
+            #{index + 1} {item.productName || 'Select Product'}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-500">
-            Available stock: {item.availableStock ?? '-'}
+            Available stock: {item.availableStock ?? 0}
           </p>
         </div>
       </div>
