@@ -2,7 +2,7 @@ import { AlertCircle, PackageSearch, Trash2 } from 'lucide-react';
 import { formatPrice } from '../../utils/price';
 
 const inputBaseClass =
-  'h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40';
+  'h-14 w-full rounded-2xl border border-white/10 bg-[#0b1118]/70 px-4 text-sm font-semibold text-white outline-none transition-all placeholder:text-slate-600 focus:border-primary-500/50 focus:bg-[#0e141d] focus:shadow-[0_0_0_4px_rgba(220,38,38,0.08)]';
 
 const labelClass =
   'text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500';
@@ -15,17 +15,18 @@ const OfflineSaleItemCard = ({
   onChange,
   onRemove,
 }) => (
-  <div className="rounded-[1.5rem] border border-white/10 bg-[#0d1118]/80 p-5 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]">
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-500/10 text-primary-200">
+  <div className="rounded-[1.75rem] border border-white/10 bg-gradient-to-b from-white/[0.05] via-[#0d1118]/90 to-[#0b0f15]/95 p-5 shadow-[0_24px_70px_-38px_rgba(0,0,0,0.95)] ring-1 ring-white/[0.03] sm:p-6">
+    <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-500/10 text-primary-200 ring-1 ring-primary-500/10">
           <PackageSearch size={18} />
         </div>
-        <div>
-          <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
+
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black uppercase tracking-[0.18em] text-white">
             Product {index + 1}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs font-semibold text-slate-500">
             Available stock: {item.availableStock ?? '-'}
           </p>
         </div>
@@ -35,20 +36,20 @@ const OfflineSaleItemCard = ({
         type="button"
         onClick={onRemove}
         disabled={!canRemove}
-        className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-red-200 transition-all hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-red-200 transition-all hover:border-red-500/30 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Trash2 size={14} />
         Remove
       </button>
     </div>
 
-    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-12">
-      <div className="space-y-2 lg:col-span-4">
+    <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="min-w-0 space-y-2.5 md:col-span-2 xl:col-span-1">
         <label className={labelClass}>Product</label>
         <select
           value={item.productId}
           onChange={(event) => onChange('productId', event.target.value)}
-          className={inputBaseClass}
+          className={`${inputBaseClass} truncate`}
           required
         >
           <option value="" disabled>
@@ -62,7 +63,7 @@ const OfflineSaleItemCard = ({
         </select>
       </div>
 
-      <div className="space-y-2 lg:col-span-2">
+      <div className="space-y-2.5">
         <label className={labelClass}>Qty</label>
         <input
           type="number"
@@ -74,7 +75,7 @@ const OfflineSaleItemCard = ({
         />
       </div>
 
-      <div className="space-y-2 lg:col-span-3">
+      <div className="space-y-2.5">
         <label className={labelClass}>Sale Price</label>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -92,7 +93,7 @@ const OfflineSaleItemCard = ({
         </div>
       </div>
 
-      <div className="space-y-2 lg:col-span-3">
+      <div className="space-y-2.5">
         <label className={labelClass}>Cost Price</label>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -112,26 +113,32 @@ const OfflineSaleItemCard = ({
       </div>
     </div>
 
-    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
       {[
         ['Line Total Sale', formatPrice(item.lineTotalSale || 0), 'text-white'],
         ['Line Total Cost', formatPrice(item.lineTotalCost || 0), 'text-slate-200'],
-        ['Line Profit', formatPrice(item.lineProfit || 0), item.lineProfit >= 0 ? 'text-emerald-300' : 'text-red-300'],
+        [
+          'Line Profit',
+          formatPrice(item.lineProfit || 0),
+          item.lineProfit >= 0 ? 'text-emerald-300' : 'text-red-300',
+        ],
       ].map(([label, value, tone]) => (
         <div
           key={label}
-          className="rounded-[1.25rem] border border-white/10 bg-white/[0.03] px-4 py-3"
+          className="flex min-h-[96px] flex-col justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.035] px-5 py-4 ring-1 ring-white/[0.02]"
         >
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
             {label}
           </p>
-          <p className={`mt-2 text-sm font-black ${tone}`}>{value}</p>
+          <p className={`mt-3 truncate text-lg font-black tracking-tight ${tone}`}>
+            {value}
+          </p>
         </div>
       ))}
     </div>
 
     {item.error ? (
-      <div className="mt-4 inline-flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-200">
+      <div className="mt-5 flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs font-semibold leading-5 text-amber-200">
         <AlertCircle size={14} className="mt-0.5 shrink-0" />
         <span>{item.error}</span>
       </div>
