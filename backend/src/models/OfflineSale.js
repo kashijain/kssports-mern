@@ -1,5 +1,57 @@
 import mongoose from 'mongoose';
 
+const offlineSaleItemSchema = new mongoose.Schema(
+  {
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true,
+    },
+    productName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    salePrice: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    costPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    totalSale: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    totalCost: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    profit: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const offlineSaleSchema = new mongoose.Schema(
   {
     product: {
@@ -67,9 +119,13 @@ const offlineSaleSchema = new mongoose.Schema(
       required: false,
       default: 0,
     },
+    items: {
+      type: [offlineSaleItemSchema],
+      default: [],
+    },
     paymentMode: {
       type: String,
-      enum: ['', 'Cash', 'Online', 'Pending'],
+      enum: ['', 'Cash', 'UPI', 'Online', 'Mixed', 'Pending'],
       required: false,
       default: '',
     },

@@ -54,13 +54,33 @@ const getBillTotals = (sale) => {
   };
 };
 
+const getBillItems = (sale) => {
+  if (Array.isArray(sale?.items) && sale.items.length > 0) {
+    return sale.items.map((item) => ({
+      productName: item.productName || item.product?.name || 'Offline Sale Item',
+      quantity: Number(item.quantity) || 0,
+      unitPrice: Number(item.salePrice) || 0,
+      lineTotal: Number(item.totalSale) || (Number(item.quantity) || 0) * (Number(item.salePrice) || 0),
+    }));
+  }
+
+  const quantity = Number(sale?.quantitySold) || 0;
+  const unitPrice = Number(sale?.salePricePerItem) || 0;
+
+  return [
+    {
+      productName: sale?.productName || sale?.product?.name || 'Offline Sale Item',
+      quantity,
+      unitPrice,
+      lineTotal: Number(sale?.totalSale) || quantity * unitPrice,
+    },
+  ];
+};
+
 const buildPrintableHtml = (sale) => {
   const billNumber = generateBillNumber(sale);
   const billDate = formatBillDate(sale?.saleDate || sale?.createdAt);
-  const productName = sale?.productName || sale?.product?.name || 'Offline Sale Item';
-  const quantity = Number(sale?.quantitySold) || 0;
-  const unitPrice = Number(sale?.salePricePerItem) || 0;
-  const lineTotal = Number(sale?.totalSale) || quantity * unitPrice;
+  const billItems = getBillItems(sale);
   const { subtotal, paidAmount, pendingAmount } = getBillTotals(sale);
 
   return `<!doctype html>
@@ -217,12 +237,18 @@ const buildPrintableHtml = (sale) => {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>${escapeHtml(productName)}</td>
-            <td class="right">${quantity}</td>
-            <td class="right">${escapeHtml(formatPrice(unitPrice))}</td>
-            <td class="right">${escapeHtml(formatPrice(lineTotal))}</td>
-          </tr>
+          ${billItems
+            .map(
+              (item) => `
+                <tr>
+                  <td>${escapeHtml(item.productName)}</td>
+                  <td class="right">${item.quantity}</td>
+                  <td class="right">${escapeHtml(formatPrice(item.unitPrice))}</td>
+                  <td class="right">${escapeHtml(formatPrice(item.lineTotal))}</td>
+                </tr>
+              `
+            )
+            .join('')}
         </tbody>
       </table>
 
@@ -251,10 +277,7 @@ const BillModal = ({ sale, onClose }) => {
 
   const billNumber = generateBillNumber(sale);
   const billDate = formatBillDate(sale.saleDate || sale.createdAt);
-  const productName = sale.productName || sale.product?.name || 'Offline Sale Item';
-  const quantity = Number(sale.quantitySold) || 0;
-  const unitPrice = Number(sale.salePricePerItem) || 0;
-  const lineTotal = Number(sale.totalSale) || quantity * unitPrice;
+  const billItems = getBillItems(sale);
   const { subtotal, paidAmount, pendingAmount } = getBillTotals(sale);
 
   const openPrintableBill = () => {
@@ -278,7 +301,10 @@ const BillModal = ({ sale, onClose }) => {
   };
 
   const handleShareOnWhatsApp = () => {
-    const message = `K.S. Sports Offline Sale Bill\nBill No: ${billNumber}\nCustomer: ${sale.customerName || 'Walk-in Customer'}\nTotal: ${formatPrice(subtotal)}\nPaid: ${formatPrice(paidAmount)}\nPending: ${formatPrice(pendingAmount)}`;
+    const itemSummary = billItems
+      .map((item) => `${item.productName} x ${item.quantity} = ${formatPrice(item.lineTotal)}`)
+      .join('\n');
+    const message = `K.S. Sports Offline Sale Bill\nBill No: ${billNumber}\nCustomer: ${sale.customerName || 'Walk-in Customer'}\n${itemSummary}\nTotal: ${formatPrice(subtotal)}\nPaid: ${formatPrice(paidAmount)}\nPending: ${formatPrice(pendingAmount)}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -364,12 +390,17 @@ const BillModal = ({ sale, onClose }) => {
                 <span className="text-right">Price</span>
                 <span className="text-right">Total</span>
               </div>
-              <div className="grid grid-cols-[1.5fr_0.6fr_0.8fr_0.8fr] gap-3 bg-[#0d1118] px-5 py-5 text-sm font-semibold text-white">
-                <span className="min-w-0">{productName}</span>
-                <span className="text-right">{quantity}</span>
-                <span className="text-right">{formatPrice(unitPrice)}</span>
-                <span className="text-right text-amber-200">{formatPrice(lineTotal)}</span>
-              </div>
+              {billItems.map((item, index) => (
+                <div
+                  key={`${item.productName}-${index}`}
+                  className="grid grid-cols-[1.5fr_0.6fr_0.8fr_0.8fr] gap-3 border-t border-white/5 bg-[#0d1118] px-5 py-5 text-sm font-semibold text-white"
+                >
+                  <span className="min-w-0">{item.productName}</span>
+                  <span className="text-right">{item.quantity}</span>
+                  <span className="text-right">{formatPrice(item.unitPrice)}</span>
+                  <span className="text-right text-amber-200">{formatPrice(item.lineTotal)}</span>
+                </div>
+              ))}
             </div>
 
             <div className="mt-6 ml-auto max-w-sm rounded-[1.5rem] border border-white/10 bg-[#0d1118] p-5">

@@ -8,17 +8,20 @@ import {
   Download,
   FileUp,
   Filter,
+  Plus,
   Package,
   Pencil,
   ReceiptText,
+  RotateCcw,
   Trash2,
   Wallet,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/price';
 import BillModal from './BillModal';
+import OfflineSaleItemCard from './OfflineSaleItemCard';
 
-const paymentModes = ['Cash', 'Online', 'Pending'];
+const paymentModes = ['Cash', 'UPI', 'Online', 'Mixed', 'Pending'];
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -37,15 +40,55 @@ const emptyPendingSummary = {
 
 const createEmptyForm = () => ({
   saleDate: getToday(),
-  productId: '',
-  quantitySold: '1',
-  salePricePerItem: '',
-  costPricePerItem: '',
-  pendingAmount: '',
   customerName: '',
+  paidAmount: '',
   paymentMode: 'Cash',
   notes: '',
 });
+
+const createEmptySaleItem = () => ({
+  productId: '',
+  productName: '',
+  quantity: '1',
+  salePrice: '',
+  costPrice: '',
+  availableStock: null,
+  lineTotalSale: 0,
+  lineTotalCost: 0,
+  lineProfit: 0,
+  error: '',
+});
+
+const buildSaleItemState = (item, products) => {
+  const product = products.find((entry) => entry._id === item.productId) || null;
+  const quantity = Number(item.quantity) || 0;
+  const salePrice = Number(item.salePrice) || 0;
+  const costPrice = Number(item.costPrice) || 0;
+  const lineTotalSale = quantity * salePrice;
+  const lineTotalCost = quantity * costPrice;
+  const availableStock = product ? Number(product.countInStock ?? 0) : item.availableStock;
+  let error = '';
+
+  if (item.productId && !product) {
+    error = 'Selected product was not found in inventory';
+  } else if (product && quantity > availableStock) {
+    error = `Only ${availableStock} unit(s) available in stock`;
+  }
+
+  return {
+    ...item,
+    productId: item.productId || '',
+    productName: product?.name || item.productName || '',
+    quantity: String(item.quantity ?? '1'),
+    salePrice: String(item.salePrice ?? ''),
+    costPrice: String(item.costPrice ?? ''),
+    availableStock,
+    lineTotalSale,
+    lineTotalCost,
+    lineProfit: lineTotalSale - lineTotalCost,
+    error,
+  };
+};
 
 const OfflineSalesSection = () => {
   const formRef = useRef(null);
@@ -64,22 +107,37 @@ const OfflineSalesSection = () => {
   const [filters, setFilters] = useState({ date: '', month: '', from: '', to: '' });
   const [appliedFilters, setAppliedFilters] = useState({ date: '', month: '', from: '', to: '' });
   const [form, setForm] = useState(createEmptyForm());
+  const [saleItems, setSaleItems] = useState([createEmptySaleItem()]);
   const [billPreviewSale, setBillPreviewSale] = useState(null);
+  const billSummary = useMemo(
+    () =>
+      saleItems.reduce(
+        (totals, item) => ({
+          totalItems: totals.totalItems + (Number(item.quantity) || 0),
+          totalSale: totals.totalSale + (Number(item.lineTotalSale) || 0),
+          totalCost: totals.totalCost + (Number(item.lineTotalCost) || 0),
+          totalProfit: totals.totalProfit + (Number(item.lineProfit) || 0),
+        }),
+        {
+          totalItems: 0,
+          totalSale: 0,
+          totalCost: 0,
+          totalProfit: 0,
+        }
+      ),
+    [saleItems]
+  );
+  const paidAmountValue = useMemo(() => {
+    if (form.paidAmount !== '') {
+      return Number(form.paidAmount) || 0;
+    }
 
-  const selectedProduct = useMemo(
-    () => products.find((item) => item._id === form.productId) || null,
-    [products, form.productId]
+    return form.paymentMode === 'Pending' ? 0 : billSummary.totalSale;
+  }, [billSummary.totalSale, form.paidAmount, form.paymentMode]);
+  const pendingAmount = useMemo(
+    () => Math.max(billSummary.totalSale - paidAmountValue, 0),
+    [billSummary.totalSale, paidAmountValue]
   );
-
-  const totalSale = useMemo(
-    () => (Number(form.quantitySold) || 0) * (Number(form.salePricePerItem) || 0),
-    [form.quantitySold, form.salePricePerItem]
-  );
-  const totalCost = useMemo(
-    () => (Number(form.quantitySold) || 0) * (Number(form.costPricePerItem) || 0),
-    [form.quantitySold, form.costPricePerItem]
-  );
-  const profit = useMemo(() => totalSale - totalCost, [totalSale, totalCost]);
   const pendingBalance = useMemo(
     () => sales.reduce((sum, sale) => sum + (Number(sale.pendingAmount) || 0), 0),
     [sales]
@@ -100,6 +158,7 @@ const OfflineSalesSection = () => {
   const resetForm = () => {
     setEditingSaleId('');
     setForm(createEmptyForm());
+    setSaleItems([buildSaleItemState(createEmptySaleItem(), products)]);
   };
 
   const loadProducts = async () => {
@@ -196,6 +255,12 @@ const OfflineSalesSection = () => {
   }, []);
 
   useEffect(() => {
+    setSaleItems((currentItems) =>
+      currentItems.map((item) => buildSaleItemState(item, products))
+    );
+  }, [products]);
+
+  useEffect(() => {
     loadSales(appliedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters]);
@@ -205,35 +270,82 @@ const OfflineSalesSection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters]);
 
-  const handleProductChange = (productId) => {
-    const nextProduct = products.find((item) => item._id === productId);
+  const handleSaleItemChange = (index, field, value) => {
+    setSaleItems((currentItems) =>
+      currentItems.map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
+        }
 
-    setForm((current) => ({
-      ...current,
-      productId,
-      salePricePerItem:
-        nextProduct && nextProduct.price !== undefined ? String(nextProduct.price) : '',
-      costPricePerItem:
-        nextProduct && nextProduct.costPrice !== undefined ? String(nextProduct.costPrice) : '',
-    }));
+        let nextItem = {
+          ...item,
+          [field]: value,
+        };
+
+        if (field === 'productId') {
+          const product = products.find((entry) => entry._id === value);
+          nextItem = {
+            ...nextItem,
+            productId: value,
+            productName: product?.name || '',
+            salePrice:
+              product?.price !== undefined && product?.price !== null
+                ? String(product.price)
+                : '',
+            costPrice:
+              product?.costPrice !== undefined && product?.costPrice !== null
+                ? String(product.costPrice)
+                : '',
+            availableStock: product ? Number(product.countInStock ?? 0) : null,
+          };
+        }
+
+        return buildSaleItemState(nextItem, products);
+      })
+    );
+  };
+
+  const addSaleItem = () => {
+    setSaleItems((currentItems) => [
+      ...currentItems,
+      buildSaleItemState(createEmptySaleItem(), products),
+    ]);
+  };
+
+  const removeSaleItem = (index) => {
+    setSaleItems((currentItems) => {
+      if (currentItems.length === 1) {
+        return currentItems;
+      }
+
+      return currentItems.filter((_, itemIndex) => itemIndex !== index);
+    });
   };
 
   const handleSubmit = async (event, shouldOpenBill = false) => {
     event.preventDefault();
-    const normalizedPendingAmount = form.paymentMode === 'Pending' ? Number(form.pendingAmount) : 0;
 
-    if (form.paymentMode === 'Pending' && (!Number.isFinite(normalizedPendingAmount) || normalizedPendingAmount <= 0)) {
-      toast.error('Pending amount is required for pending payment');
+    const normalizedItems = saleItems.map((item) => buildSaleItemState(item, products));
+    setSaleItems(normalizedItems);
+
+    if (!normalizedItems.length || normalizedItems.every((item) => !item.productId)) {
+      toast.error('Add products to create bill');
       return;
     }
 
-    if (normalizedPendingAmount > totalSale) {
-      toast.error('Pending amount cannot be greater than total sale');
+    const invalidItem = normalizedItems.find((item) => !item.productId || item.error);
+    if (invalidItem) {
+      toast.error(invalidItem.error || 'Please select a product for every bill item');
       return;
     }
 
-    if (form.paymentMode === 'Pending' && !form.customerName.trim()) {
+    if (pendingAmount > 0 && !form.customerName.trim()) {
       toast.error('Customer name is required when payment is pending');
+      return;
+    }
+
+    if (paidAmountValue > billSummary.totalSale) {
+      toast.error('Paid amount cannot be greater than grand total sale');
       return;
     }
 
@@ -241,14 +353,24 @@ const OfflineSalesSection = () => {
 
     const payload = {
       saleDate: form.saleDate,
-      productId: form.productId,
-      quantitySold: Number(form.quantitySold),
-      salePricePerItem: Number(form.salePricePerItem),
-      costPricePerItem: Number(form.costPricePerItem),
-      pendingAmount: normalizedPendingAmount,
       customerName: form.customerName,
       paymentMode: form.paymentMode,
+      paidAmount: paidAmountValue,
+      pendingAmount,
       notes: form.notes,
+      items: normalizedItems.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: Number(item.quantity) || 0,
+        salePrice: Number(item.salePrice) || 0,
+        costPrice: Number(item.costPrice) || 0,
+        totalSale: Number(item.lineTotalSale) || 0,
+        totalCost: Number(item.lineTotalCost) || 0,
+        profit: Number(item.lineProfit) || 0,
+      })),
+      totalSale: billSummary.totalSale,
+      totalCost: billSummary.totalCost,
+      totalProfit: billSummary.totalProfit,
     };
 
     try {
@@ -281,18 +403,45 @@ const OfflineSalesSection = () => {
   };
 
   const handleEdit = (sale) => {
+    const editableItems = Array.isArray(sale.items) && sale.items.length > 0
+      ? sale.items.map((item) =>
+          buildSaleItemState(
+            {
+              productId: item.product?._id || item.product || '',
+              productName: item.productName || '',
+              quantity: String(item.quantity ?? 1),
+              salePrice: String(item.salePrice ?? ''),
+              costPrice: String(item.costPrice ?? ''),
+              availableStock: null,
+            },
+            products
+          )
+        )
+      : [
+          buildSaleItemState(
+            {
+              productId: sale.product?._id || sale.product || '',
+              productName: sale.productName || '',
+              quantity: String(sale.quantitySold ?? 1),
+              salePrice: String(sale.salePricePerItem ?? ''),
+              costPrice: String(sale.costPricePerItem ?? ''),
+              availableStock: null,
+            },
+            products
+          ),
+        ];
+
     setEditingSaleId(sale._id);
     setForm({
       saleDate: sale.saleDate?.slice(0, 10) || getToday(),
-      productId: sale.product?._id || sale.product,
-      quantitySold: String(sale.quantitySold ?? 1),
-      salePricePerItem: String(sale.salePricePerItem ?? ''),
-      costPricePerItem: String(sale.costPricePerItem ?? ''),
-      pendingAmount: String(sale.pendingAmount ?? ''),
       customerName: sale.customerName || '',
+      paidAmount: String(
+        sale.receivedAmount ?? Math.max((Number(sale.totalSale) || 0) - (Number(sale.pendingAmount) || 0), 0)
+      ),
       paymentMode: sale.paymentMode || 'Cash',
       notes: sale.notes || '',
     });
+    setSaleItems(editableItems);
 
     window.requestAnimationFrame(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -579,205 +728,211 @@ const OfflineSalesSection = () => {
 
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#10151d]/95 p-6 shadow-[0_28px_80px_-42px_rgba(0,0,0,0.95)] backdrop-blur-xl md:p-8">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">{editingSaleId ? 'Edit Entry' : 'Record New Sale'}</p>
-          <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Offline Sales Entry Panel</h3>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">
+            {editingSaleId ? 'Edit Bill' : 'Record New Bill'}
+          </p>
+          <h3 className="mt-2 text-2xl font-black tracking-tight text-white">
+            Offline Sales Billing Console
+          </h3>
           <p className="mt-2 text-sm text-slate-400">
-            Record date-wise offline sales without affecting the online payment flow.
+            Build a multi-product counter invoice with live margin, paid amount, and pending balance tracking.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Date</label>
-            <input
-              type="date"
-              value={form.saleDate}
-              onChange={(event) => setForm((current) => ({ ...current, saleDate: event.target.value }))}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.75fr)_420px]">
+          <div className="space-y-6">
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#151b24]/80 p-6 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Sale Details</p>
+                  <h4 className="mt-2 text-xl font-black tracking-tight text-white">Customer and Payment</h4>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                  {form.saleDate}
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Product Name</label>
-            <select
-              value={form.productId}
-              onChange={(event) => handleProductChange(event.target.value)}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
-              required
-            >
-              <option value="" disabled>Select Product</option>
-              {products.map((product) => (
-                <option key={product._id} value={product._id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Sale Date</label>
+                  <input
+                    type="date"
+                    value={form.saleDate}
+                    onChange={(event) => setForm((current) => ({ ...current, saleDate: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
+                    required
+                  />
+                </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Quantity Sold</label>
-            <input
-              type="number"
-              min="1"
-              value={form.quantitySold}
-              onChange={(event) => setForm((current) => ({ ...current, quantitySold: event.target.value }))}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
-              required
-            />
-          </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Mode</label>
+                  <select
+                    value={form.paymentMode}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        paymentMode: event.target.value,
+                        paidAmount: event.target.value === 'Pending' ? '0' : current.paidAmount,
+                      }))
+                    }
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
+                    required
+                  >
+                    {paymentModes.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Sale Price Per Item</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.salePricePerItem}
-              onChange={(event) => setForm((current) => ({ ...current, salePricePerItem: event.target.value }))}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
-              required
-            />
-          </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                    Customer Name {pendingAmount > 0 ? <span className="text-primary-300">(Required)</span> : null}
+                  </label>
+                  <input
+                    type="text"
+                    value={form.customerName}
+                    onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+                    className={`h-12 w-full rounded-2xl border px-4 text-sm text-white outline-none transition-all ${
+                      pendingAmount > 0
+                        ? 'border-primary-500/30 bg-primary-500/10 focus:border-primary-500/50'
+                        : 'border-white/10 bg-white/[0.04] focus:border-primary-500/40'
+                    }`}
+                    placeholder={pendingAmount > 0 ? 'Required for credit bill' : 'Walk-in customer'}
+                    required={pendingAmount > 0}
+                  />
+                </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Total Sale</label>
-            <input
-              type="text"
-              value={formatPrice(totalSale)}
-              readOnly
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none"
-            />
-          </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Paid Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                      Rs.
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.paidAmount}
+                      onChange={(event) => setForm((current) => ({ ...current, paidAmount: event.target.value }))}
+                      className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-14 text-sm text-white outline-none transition-all focus:border-primary-500/40"
+                      placeholder={formatPrice(form.paymentMode === 'Pending' ? 0 : billSummary.totalSale)}
+                    />
+                  </div>
+                </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Cost Price Per Item</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.costPricePerItem}
-              onChange={(event) => setForm((current) => ({ ...current, costPricePerItem: event.target.value }))}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
-              placeholder={selectedProduct ? 'Enter cost price' : ''}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Total Cost</label>
-            <input
-              type="text"
-              value={formatPrice(totalCost)}
-              readOnly
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white outline-none"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Profit</label>
-            <input
-              type="text"
-              value={formatPrice(profit)}
-              readOnly
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-emerald-300 outline-none"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Mode</label>
-            <select
-              value={form.paymentMode}
-              onChange={(event) => setForm((current) => ({ ...current, paymentMode: event.target.value }))}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all focus:border-primary-500/40"
-              required
-            >
-              {paymentModes.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {form.paymentMode === 'Pending' ? (
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</label>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={form.pendingAmount}
-                onChange={(event) => setForm((current) => ({ ...current, pendingAmount: event.target.value }))}
-                className="h-12 w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 text-sm text-white outline-none transition-all focus:border-amber-400/50"
-                required
-              />
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</label>
+                  <textarea
+                    rows="3"
+                    value={form.notes}
+                    onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"
+                    placeholder="Optional invoice note or delivery instruction"
+                  />
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pending Amount</label>
-              <input
-                type="text"
-                value={formatPrice(0)}
-                readOnly
-                className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-400 outline-none"
-              />
+
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#151b24]/80 p-6 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Products Card</p>
+                  <h4 className="mt-2 text-xl font-black tracking-tight text-white">Bill Line Items</h4>
+                  <p className="mt-2 text-sm text-slate-400">
+                    {saleItems.length ? 'Each product row calculates sale, cost, and profit in real time.' : 'Add products to create bill'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addSaleItem}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-primary-200 transition-all hover:bg-primary-500/15"
+                >
+                  <Plus size={16} />
+                  Add Product
+                </button>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                {saleItems.map((item, index) => (
+                  <OfflineSaleItemCard
+                    key={`${item.productId || 'item'}-${index}`}
+                    item={item}
+                    index={index}
+                    products={products}
+                    canRemove={saleItems.length > 1}
+                    onChange={(field, value) => handleSaleItemChange(index, field, value)}
+                    onRemove={() => removeSaleItem(index)}
+                  />
+                ))}
+              </div>
             </div>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Customer Name {form.paymentMode === 'Pending' ? <span className="text-primary-300">(Required)</span> : null}</label>
-            <input
-              type="text"
-              value={form.customerName}
-              onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
-              className={`h-12 w-full rounded-2xl border px-4 text-sm text-white outline-none transition-all ${
-                form.paymentMode === 'Pending'
-                  ? 'border-primary-500/30 bg-primary-500/10 focus:border-primary-500/50'
-                  : 'border-white/10 bg-white/[0.04] focus:border-primary-500/40'
-              }`}
-              placeholder={form.paymentMode === 'Pending' ? 'Required for pending payment' : 'Optional'}
-              required={form.paymentMode === 'Pending'}
-            />
           </div>
 
-          <div className="space-y-2 md:col-span-2 xl:col-span-3">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Notes</label>
-            <textarea
-              rows="3"
-              value={form.notes}
-              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"
-              placeholder="Optional notes"
-            />
-          </div>
+          <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#151b24]/80 p-6 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Summary Card</p>
+              <h4 className="mt-2 text-xl font-black tracking-tight text-white">Invoice Totals</h4>
 
-          <div className="md:col-span-2 xl:col-span-3 flex justify-end gap-3">
-            {editingSaleId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.06]"
-              >
-                Cancel
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={(event) => handleSubmit(event, true)}
-              disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-6 py-3 text-sm font-black uppercase tracking-[0.18em] text-amber-200 transition-all hover:border-amber-500/30 hover:bg-amber-500/15 disabled:opacity-60"
-            >
-              <ReceiptText size={16} />
-              Generate Bill
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-2xl bg-primary-600 px-8 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60"
-            >
-              {submitting ? 'Saving...' : editingSaleId ? 'Update Offline Sale' : 'Save Offline Sale'}
-            </button>
+              <div className="mt-6 space-y-3">
+                {[
+                  ['Total Items', billSummary.totalItems],
+                  ['Grand Total Sale', formatPrice(billSummary.totalSale)],
+                  ['Grand Total Cost', formatPrice(billSummary.totalCost)],
+                  ['Total Profit', formatPrice(billSummary.totalProfit)],
+                  ['Paid Amount', formatPrice(paidAmountValue)],
+                  ['Pending Amount', formatPrice(pendingAmount)],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm"
+                  >
+                    <span className="font-bold text-slate-400">{label}</span>
+                    <span className={`font-black ${label === 'Pending Amount' && pendingAmount > 0 ? 'text-amber-300' : label === 'Total Profit' ? 'text-emerald-300' : 'text-white'}`}>
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-primary-500/20 bg-gradient-to-br from-primary-600/10 via-[#151b24] to-[#151b24] p-6 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Action Card</p>
+              <h4 className="mt-2 text-xl font-black tracking-tight text-white">Finalize Bill</h4>
+
+              <div className="mt-6 space-y-3">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_20px_44px_-20px_rgba(220,38,38,0.75)] transition-all hover:-translate-y-0.5 hover:bg-primary-700 disabled:opacity-60"
+                >
+                  <ReceiptText size={16} />
+                  {submitting ? 'Saving...' : editingSaleId ? 'Update Sale' : 'Save Sale'}
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => handleSubmit(event, true)}
+                  disabled={submitting}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-amber-200 transition-all hover:bg-amber-500/15 disabled:opacity-60"
+                >
+                  <ReceiptText size={16} />
+                  Save and Generate Bill
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-slate-200 transition-all hover:border-white/20 hover:bg-white/[0.06]"
+                >
+                  <RotateCcw size={16} />
+                  {editingSaleId ? 'Reset Bill and Exit Edit' : 'Reset Bill'}
+                </button>
+              </div>
+
+              <p className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs leading-6 text-slate-400">
+                Pending amount is auto-calculated from grand total minus paid amount. Customer name is required whenever a balance remains.
+              </p>
+            </div>
           </div>
         </form>
       </section>

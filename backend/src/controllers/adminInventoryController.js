@@ -5,7 +5,7 @@ import OfflineSale from '../models/OfflineSale.js';
 
 const DEFAULT_PRODUCT_IMAGE = '/uploads/product-placeholder.png';
 const DEFAULT_PRODUCT_BRAND = 'K.S. Sports';
-const OFFLINE_PAYMENT_MODES = ['Cash', 'Online', 'Pending'];
+const OFFLINE_PAYMENT_MODES = ['Cash', 'UPI', 'Online', 'Mixed', 'Pending'];
 const PRODUCT_NAME_ALIASES = {
   'glubes regular': 'Gloves Regular',
   'glubes perium': 'Gloves Premium',
@@ -133,9 +133,16 @@ const normalizePaymentMode = (value, { strict = false } = {}) => {
     return 'Pending';
   }
 
+  if (normalizedValue === 'upi') {
+    return 'UPI';
+  }
+
+  if (normalizedValue === 'mixed' || normalizedValue === 'partial') {
+    return 'Mixed';
+  }
+
   if (
     normalizedValue === 'online' ||
-    (!strict && normalizedValue === 'upi') ||
     (!strict && normalizedValue === 'online/upi')
   ) {
     return strict ? 'Online' : normalizedValue === 'online' ? 'Online' : 'Online/UPI';
@@ -144,27 +151,49 @@ const normalizePaymentMode = (value, { strict = false } = {}) => {
   return null;
 };
 
-const derivePaymentDetails = ({ totalSale, paymentMode, pendingAmount, customerName }) => {
+const derivePaymentDetails = ({
+  totalSale,
+  paymentMode,
+  pendingAmount,
+  customerName,
+  paidAmount,
+}) => {
   const normalizedCustomerName = toTrimmedString(customerName);
-  const normalizedPendingAmount = Number(pendingAmount ?? 0);
+  const hasPaidAmount = paidAmount !== undefined && paidAmount !== null && paidAmount !== '';
+  const normalizedPaidAmount = hasPaidAmount ? Number(paidAmount) : undefined;
+  const normalizedPendingAmount =
+    pendingAmount !== undefined && pendingAmount !== null && pendingAmount !== ''
+      ? Number(pendingAmount)
+      : hasPaidAmount
+        ? totalSale - normalizedPaidAmount
+        : paymentMode === 'Pending'
+          ? totalSale
+          : 0;
 
-  if (paymentMode === 'Pending') {
-    if (!Number.isFinite(normalizedPendingAmount) || normalizedPendingAmount <= 0) {
-      throw new Error('Pending amount must be greater than 0');
-    }
+  if (hasPaidAmount && (!Number.isFinite(normalizedPaidAmount) || normalizedPaidAmount < 0)) {
+    throw new Error('Paid Amount must be 0 or more');
+  }
 
-    if (normalizedPendingAmount > totalSale) {
-      throw new Error('Pending Amount cannot be greater than Total Sale');
-    }
+  if (!Number.isFinite(normalizedPendingAmount) || normalizedPendingAmount < 0) {
+    throw new Error('Pending amount must be 0 or more');
+  }
 
+  if (normalizedPendingAmount > totalSale) {
+    throw new Error('Pending Amount cannot be greater than Total Sale');
+  }
+
+  if (normalizedPendingAmount > 0) {
     if (!normalizedCustomerName) {
-      throw new Error('Customer name is required when payment is Pending');
+      throw new Error('Customer name is required when payment is pending');
     }
 
     return {
       receivedAmount: totalSale - normalizedPendingAmount,
       pendingAmount: normalizedPendingAmount,
-      paymentStatus: 'Pending',
+      paymentStatus:
+        paymentMode === 'Pending' || normalizedPendingAmount >= totalSale
+          ? 'Pending'
+          : 'Partial Payment',
       customerName: normalizedCustomerName,
     };
   }
@@ -385,8 +414,8 @@ const normalizeOfflineSalePayload = async ({
   if (!normalizedPaymentMode) {
     throw new Error(
       strictPaymentMode
-        ? `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, Online, or Pending`
-        : `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, Pending, or Online/UPI`
+        ? `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, UPI, Online, Mixed, or Pending`
+        : `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, UPI, Online, Mixed, Pending, or Online/UPI`
     );
   }
 
@@ -450,6 +479,303 @@ const normalizeOfflineSalePayload = async ({
     customerName: paymentDetails.customerName,
     notes: toTrimmedString(notes),
   };
+};
+
+const normalizeOfflineSaleBillPayload = async ({
+  saleDate,
+  items,
+  paidAmount,
+  pendingAmount,
+  customerName,
+  paymentMode,
+  notes,
+  source = 'manual',
+  strictPaymentMode = true,
+}) => {
+  const normalizedSaleDate = normalizeSaleDateInput(saleDate);
+  const normalizedPaymentMode = normalizePaymentMode(paymentMode, {
+    strict: strictPaymentMode,
+  });
+
+  if (!normalizedSaleDate) {
+    throw new Error('Valid sale date is required');
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('At least one product item is required');
+  }
+
+  if (!normalizedPaymentMode) {
+    throw new Error(
+      `Invalid Payment Mode: "${toTrimmedString(paymentMode)}". Use Cash, UPI, Online, Mixed, or Pending`
+    );
+  }
+
+  const normalizedItems = [];
+
+  for (const [index, item] of items.entries()) {
+    const normalizedQuantity = Number(item?.quantity);
+    const normalizedSalePrice = Number(item?.salePrice);
+
+    if (!item?.productId) {
+      throw new Error(`Product is required for item ${index + 1}`);
+    }
+
+    if (!Number.isFinite(normalizedQuantity) || normalizedQuantity <= 0) {
+      throw new Error(`Quantity must be greater than 0 for item ${index + 1}`);
+    }
+
+    if (!Number.isFinite(normalizedSalePrice) || normalizedSalePrice < 0) {
+      throw new Error(`Sale Price must be 0 or more for item ${index + 1}`);
+    }
+
+    const product = await Product.findById(item.productId);
+
+    if (!product) {
+      throw new Error(`Product not found for item ${index + 1}`);
+    }
+
+    const normalizedCostPrice =
+      item?.costPrice !== undefined && item?.costPrice !== null && item?.costPrice !== ''
+        ? Number(item.costPrice)
+        : Number(product.costPrice || 0);
+
+    if (!Number.isFinite(normalizedCostPrice) || normalizedCostPrice < 0) {
+      throw new Error(`Cost Price must be 0 or more for item ${index + 1}`);
+    }
+
+    const totalSale = normalizedQuantity * normalizedSalePrice;
+    const totalCost = normalizedQuantity * normalizedCostPrice;
+
+    normalizedItems.push({
+      product,
+      productName: product.name,
+      quantity: normalizedQuantity,
+      salePrice: normalizedSalePrice,
+      costPrice: normalizedCostPrice,
+      totalSale,
+      totalCost,
+      profit: totalSale - totalCost,
+    });
+  }
+
+  const totalSale = normalizedItems.reduce((sum, item) => sum + item.totalSale, 0);
+  const totalCost = normalizedItems.reduce((sum, item) => sum + item.totalCost, 0);
+  const totalQuantitySold = normalizedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const paymentDetails = derivePaymentDetails({
+    totalSale,
+    paymentMode: normalizedPaymentMode,
+    pendingAmount,
+    paidAmount,
+    customerName,
+  });
+
+  return {
+    source,
+    rowType: 'product_sale',
+    dayStatus: '',
+    saleDate: normalizedSaleDate,
+    paymentMode: normalizedPaymentMode,
+    paymentStatus: paymentDetails.paymentStatus,
+    receivedAmount: paymentDetails.receivedAmount,
+    pendingAmount: paymentDetails.pendingAmount,
+    customerName: paymentDetails.customerName,
+    notes: toTrimmedString(notes),
+    items: normalizedItems,
+    product: normalizedItems[0]?.product || null,
+    productName:
+      normalizedItems.length === 1
+        ? normalizedItems[0].productName
+        : `${normalizedItems[0].productName} +${normalizedItems.length - 1} more`,
+    quantitySold: totalQuantitySold,
+    salePricePerItem: normalizedItems[0]?.salePrice || 0,
+    costPricePerItem: normalizedItems[0]?.costPrice || 0,
+    totalSale,
+    totalCost,
+    profit: totalSale - totalCost,
+  };
+};
+
+const adjustInventoryForItems = async (items = [], operation = -1) => {
+  const touchedItems = [];
+
+  try {
+    for (const item of items) {
+      const quantity = Number(item.quantity || 0);
+
+      if (!item.product?._id || !quantity) {
+        continue;
+      }
+
+      if (operation < 0) {
+        const updatedProduct = await Product.findOneAndUpdate(
+          {
+            _id: item.product._id,
+            countInStock: { $gte: quantity },
+          },
+          { $inc: { countInStock: -quantity } },
+          { new: true }
+        );
+
+        if (!updatedProduct) {
+          const latestProduct = await Product.findById(item.product._id).select('countInStock name');
+          throw new Error(
+            `Insufficient stock for "${latestProduct?.name || item.productName}". Requested qty: ${quantity}, available stock: ${latestProduct?.countInStock ?? 0}`
+          );
+        }
+      } else {
+        await Product.updateOne(
+          { _id: item.product._id },
+          { $inc: { countInStock: quantity } }
+        );
+      }
+
+      touchedItems.push(item);
+    }
+  } catch (error) {
+    const rollbackOperation = operation < 0 ? 1 : -1;
+
+    for (const item of touchedItems.reverse()) {
+      await Product.updateOne(
+        { _id: item.product._id },
+        { $inc: { countInStock: rollbackOperation * Number(item.quantity || 0) } }
+      );
+    }
+
+    throw error;
+  }
+};
+
+const getSaleItemsSnapshot = (sale) => {
+  if (Array.isArray(sale?.items) && sale.items.length > 0) {
+    return sale.items.map((item) => ({
+      product: item.product,
+      productName: item.productName,
+      quantity: Number(item.quantity || 0),
+      salePrice: Number(item.salePrice || 0),
+      costPrice: Number(item.costPrice || 0),
+      totalSale: Number(item.totalSale || 0),
+      totalCost: Number(item.totalCost || 0),
+      profit: Number(item.profit || 0),
+    }));
+  }
+
+  if (sale?.product) {
+    return [
+      {
+        product: sale.product,
+        productName: sale.productName,
+        quantity: Number(sale.quantitySold || 0),
+        salePrice: Number(sale.salePricePerItem || 0),
+        costPrice: Number(sale.costPricePerItem || 0),
+        totalSale: Number(sale.totalSale || 0),
+        totalCost: Number(sale.totalCost || 0),
+        profit: Number(sale.profit || 0),
+      },
+    ];
+  }
+
+  return [];
+};
+
+const buildBillSaleDocument = (normalizedSale, userId) => ({
+  product: normalizedSale.product?._id || null,
+  rowType: normalizedSale.rowType || 'product_sale',
+  source: normalizedSale.source || 'manual',
+  dayStatus: normalizedSale.dayStatus || '',
+  productName: normalizedSale.productName,
+  saleDate: normalizedSale.saleDate,
+  quantitySold: normalizedSale.quantitySold,
+  salePricePerItem: normalizedSale.salePricePerItem,
+  totalSale: normalizedSale.totalSale,
+  costPricePerItem: normalizedSale.costPricePerItem,
+  totalCost: normalizedSale.totalCost,
+  profit: normalizedSale.profit,
+  items: normalizedSale.items.map((item) => ({
+    product: item.product._id,
+    productName: item.productName,
+    quantity: item.quantity,
+    salePrice: item.salePrice,
+    costPrice: item.costPrice,
+    totalSale: item.totalSale,
+    totalCost: item.totalCost,
+    profit: item.profit,
+  })),
+  paymentMode: normalizedSale.paymentMode,
+  paymentStatus: normalizedSale.paymentStatus,
+  receivedAmount: normalizedSale.receivedAmount,
+  pendingAmount: normalizedSale.pendingAmount,
+  customerName: normalizedSale.customerName,
+  notes: normalizedSale.notes,
+  createdBy: userId,
+});
+
+const createOfflineSaleBillRecord = async (normalizedSale, userId) => {
+  await adjustInventoryForItems(normalizedSale.items, -1);
+
+  try {
+    const sale = await OfflineSale.create(buildBillSaleDocument(normalizedSale, userId));
+    return { sale };
+  } catch (error) {
+    await adjustInventoryForItems(normalizedSale.items, 1);
+    throw error;
+  }
+};
+
+const updateOfflineSaleBillRecord = async (existingSale, normalizedSale) => {
+  const existingItems = getSaleItemsSnapshot(existingSale);
+
+  if ((existingSale.source || 'manual') !== 'history_import') {
+    await adjustInventoryForItems(existingItems, 1);
+
+    try {
+      await adjustInventoryForItems(normalizedSale.items, -1);
+    } catch (error) {
+      await adjustInventoryForItems(existingItems, -1);
+      throw error;
+    }
+  }
+
+  existingSale.product = normalizedSale.product?._id || null;
+  existingSale.rowType = normalizedSale.rowType || 'product_sale';
+  existingSale.source = normalizedSale.source || existingSale.source || 'manual';
+  existingSale.dayStatus = normalizedSale.dayStatus || '';
+  existingSale.productName = normalizedSale.productName;
+  existingSale.saleDate = normalizedSale.saleDate;
+  existingSale.quantitySold = normalizedSale.quantitySold;
+  existingSale.salePricePerItem = normalizedSale.salePricePerItem;
+  existingSale.totalSale = normalizedSale.totalSale;
+  existingSale.costPricePerItem = normalizedSale.costPricePerItem;
+  existingSale.totalCost = normalizedSale.totalCost;
+  existingSale.profit = normalizedSale.profit;
+  existingSale.items = normalizedSale.items.map((item) => ({
+    product: item.product._id,
+    productName: item.productName,
+    quantity: item.quantity,
+    salePrice: item.salePrice,
+    costPrice: item.costPrice,
+    totalSale: item.totalSale,
+    totalCost: item.totalCost,
+    profit: item.profit,
+  }));
+  existingSale.paymentMode = normalizedSale.paymentMode;
+  existingSale.paymentStatus = normalizedSale.paymentStatus;
+  existingSale.receivedAmount = normalizedSale.receivedAmount;
+  existingSale.pendingAmount = normalizedSale.pendingAmount;
+  existingSale.customerName = normalizedSale.customerName;
+  existingSale.notes = normalizedSale.notes;
+
+  try {
+    const sale = await existingSale.save();
+    return { sale };
+  } catch (error) {
+    if ((existingSale.source || 'manual') !== 'history_import') {
+      await adjustInventoryForItems(normalizedSale.items, 1);
+      await adjustInventoryForItems(existingItems, -1);
+    }
+
+    throw error;
+  }
 };
 
 const createOfflineSaleRecord = async (normalizedSale, userId) => {
@@ -980,12 +1306,21 @@ export const uploadOfflineSalesSheet = async (req, res) => {
 
 export const createOfflineSale = async (req, res) => {
   try {
-    const normalizedSale = await normalizeOfflineSalePayload({
-      ...req.body,
-      source: 'manual',
-      strictPaymentMode: true,
-    });
-    const result = await createOfflineSaleRecord(normalizedSale, req.user._id);
+    const isBillPayload = Array.isArray(req.body?.items) && req.body.items.length > 0;
+    const normalizedSale = isBillPayload
+      ? await normalizeOfflineSaleBillPayload({
+          ...req.body,
+          source: 'manual',
+          strictPaymentMode: true,
+        })
+      : await normalizeOfflineSalePayload({
+          ...req.body,
+          source: 'manual',
+          strictPaymentMode: true,
+        });
+    const result = isBillPayload
+      ? await createOfflineSaleBillRecord(normalizedSale, req.user._id)
+      : await createOfflineSaleRecord(normalizedSale, req.user._id);
 
     res.status(201).json({
       message: 'Offline sale saved successfully',
@@ -1006,12 +1341,21 @@ export const updateOfflineSale = async (req, res) => {
   }
 
   try {
-    const normalizedSale = await normalizeOfflineSalePayload({
-      ...req.body,
-      source: existingSale.source || 'manual',
-      strictPaymentMode: true,
-    });
-    const result = await updateOfflineSaleRecord(existingSale, normalizedSale);
+    const isBillPayload = Array.isArray(req.body?.items) && req.body.items.length > 0;
+    const normalizedSale = isBillPayload
+      ? await normalizeOfflineSaleBillPayload({
+          ...req.body,
+          source: existingSale.source || 'manual',
+          strictPaymentMode: true,
+        })
+      : await normalizeOfflineSalePayload({
+          ...req.body,
+          source: existingSale.source || 'manual',
+          strictPaymentMode: true,
+        });
+    const result = isBillPayload
+      ? await updateOfflineSaleBillRecord(existingSale, normalizedSale)
+      : await updateOfflineSaleRecord(existingSale, normalizedSale);
 
     res.json({
       message: 'Offline sale updated successfully',
@@ -1031,11 +1375,17 @@ export const deleteOfflineSale = async (req, res) => {
     throw new Error('Offline sale not found');
   }
 
-  if (sale.source !== 'history_import' && sale.rowType === 'product_sale' && sale.product) {
-    await Product.updateOne(
-      { _id: sale.product },
-      { $inc: { countInStock: sale.quantitySold } }
-    );
+  if (sale.source !== 'history_import' && sale.rowType === 'product_sale') {
+    const saleItems = getSaleItemsSnapshot(sale);
+
+    if (saleItems.length > 0) {
+      await adjustInventoryForItems(saleItems, 1);
+    } else if (sale.product) {
+      await Product.updateOne(
+        { _id: sale.product },
+        { $inc: { countInStock: sale.quantitySold } }
+      );
+    }
   }
 
   await OfflineSale.deleteOne({ _id: sale._id });
@@ -1112,7 +1462,10 @@ export const getPendingOfflinePayments = async (req, res) => {
         _id: sale._id,
         date: saleDate,
         customerName: sale.customerName || '',
-        productName: sale.productName || '',
+        productName:
+          Array.isArray(sale.items) && sale.items.length > 1
+            ? `${sale.items[0].productName} +${sale.items.length - 1} more`
+            : sale.productName || sale.items?.[0]?.productName || '',
         totalSale,
         paidAmount,
         pendingAmount,
