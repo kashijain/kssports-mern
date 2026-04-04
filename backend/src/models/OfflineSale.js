@@ -17,6 +17,16 @@ const offlineSaleItemSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    unitType: {
+      type: String,
+      enum: ['Piece', 'Box'],
+      default: 'Piece',
+    },
+    piecesPerBox: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
     salePrice: {
       type: Number,
       required: true,
@@ -89,6 +99,16 @@ const offlineSaleSchema = new mongoose.Schema(
       required: false,
       min: 0,
       default: 0,
+    },
+    unitType: {
+      type: String,
+      enum: ['Piece', 'Box'],
+      default: 'Piece',
+    },
+    piecesPerBox: {
+      type: Number,
+      default: 1,
+      min: 1,
     },
     salePricePerItem: {
       type: Number,

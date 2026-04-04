@@ -59,6 +59,7 @@ const getBillItems = (sale) => {
     return sale.items.map((item) => ({
       productName: item.productName || item.product?.name || 'Offline Sale Item',
       quantity: Number(item.quantity) || 0,
+      unitType: item.unitType || 'Piece',
       unitPrice: Number(item.salePrice) || 0,
       lineTotal: Number(item.totalSale) || (Number(item.quantity) || 0) * (Number(item.salePrice) || 0),
     }));
@@ -71,6 +72,7 @@ const getBillItems = (sale) => {
     {
       productName: sale?.productName || sale?.product?.name || 'Offline Sale Item',
       quantity,
+      unitType: sale?.unitType || 'Piece',
       unitPrice,
       lineTotal: Number(sale?.totalSale) || quantity * unitPrice,
     },
@@ -242,7 +244,7 @@ const buildPrintableHtml = (sale) => {
               (item) => `
                 <tr>
                   <td>${escapeHtml(item.productName)}</td>
-                  <td class="right">${item.quantity}</td>
+                  <td class="right">${item.quantity} ${escapeHtml(item.unitType)}</td>
                   <td class="right">${escapeHtml(formatPrice(item.unitPrice))}</td>
                   <td class="right">${escapeHtml(formatPrice(item.lineTotal))}</td>
                 </tr>
@@ -302,7 +304,7 @@ const BillModal = ({ sale, onClose }) => {
 
   const handleShareOnWhatsApp = () => {
     const itemSummary = billItems
-      .map((item) => `${item.productName} x ${item.quantity} = ${formatPrice(item.lineTotal)}`)
+      .map((item) => `${item.productName} x ${item.quantity} ${item.unitType} = ${formatPrice(item.lineTotal)}`)
       .join('\n');
     const message = `K.S. Sports Offline Sale Bill\nBill No: ${billNumber}\nCustomer: ${sale.customerName || 'Walk-in Customer'}\n${itemSummary}\nTotal: ${formatPrice(subtotal)}\nPaid: ${formatPrice(paidAmount)}\nPending: ${formatPrice(pendingAmount)}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
@@ -396,7 +398,7 @@ const BillModal = ({ sale, onClose }) => {
                   className="grid grid-cols-[1.5fr_0.6fr_0.8fr_0.8fr] gap-3 border-t border-white/5 bg-[#0d1118] px-5 py-5 text-sm font-semibold text-white"
                 >
                   <span className="min-w-0">{item.productName}</span>
-                  <span className="text-right">{item.quantity}</span>
+                  <span className="text-right">{item.quantity} {item.unitType}</span>
                   <span className="text-right">{formatPrice(item.unitPrice)}</span>
                   <span className="text-right text-amber-200">{formatPrice(item.lineTotal)}</span>
                 </div>

@@ -120,7 +120,7 @@ const getResolvedProductName=(form)=>{
   if(form.productNameOption===OTHER_PRODUCT_OPTION) return form.customProductName.trim();
   return form.productNameOption.trim();
 };
-const emptyForm={name:'',productNameOption:'',customProductName:'',price:'',brand:'',category:'',countInStock:'',description:'',codAvailable:true,features:[createFeature()],specifications:[createSpec()]};
+const emptyForm={name:'',productNameOption:'',customProductName:'',price:'',brand:'',category:'',countInStock:'',pieceEnabled:true,boxEnabled:false,piecesPerBox:'1',description:'',codAvailable:true,features:[createFeature()],specifications:[createSpec()]};
 const DASHBOARD_WEEK_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 const Dashboard=()=>{
@@ -233,6 +233,9 @@ const Dashboard=()=>{
         brand:product.brand||'',
         category:nextCategory,
         countInStock:product.countInStock??'',
+        pieceEnabled:product.pieceEnabled!==false,
+        boxEnabled:product.boxEnabled===true,
+        piecesPerBox:String(product.piecesPerBox||1),
         description:product.description||'',
         codAvailable:product.codAvailable!==false,
         features:product.features?.length?product.features.map(getFeatureFields):[createFeature()],
@@ -550,6 +553,8 @@ const Dashboard=()=>{
     const resolvedProductName=getResolvedProductName(form);
     if(!resolvedProductName){ toast.error(form.productNameOption===OTHER_PRODUCT_OPTION?'Enter new product name':'Select Product Name'); return; }
     if(!form.category){ toast.error('Select Category'); return; }
+    if(!form.pieceEnabled&&!form.boxEnabled){ toast.error('Enable at least one unit type: Piece or Box'); return; }
+    if(form.boxEnabled&&(!Number.isFinite(Number(form.piecesPerBox))||Number(form.piecesPerBox)<1)){ toast.error('Pieces per box must be at least 1'); return; }
     if(form.features.some(feature=>feature.option===OTHER_FEATURE_OPTION&&!feature.customValue.trim())){ toast.error('Enter new feature name'); return; }
     if(form.specifications.some(spec=>spec.option===OTHER_SPECIFICATION_OPTION&&!spec.customName.trim())){ toast.error('Enter new specification name'); return; }
     const resolvedSpecifications=form.specifications
@@ -561,6 +566,9 @@ const Dashboard=()=>{
     fd.append('brand',form.brand);
     fd.append('category',form.category);
     fd.append('countInStock',form.countInStock);
+    fd.append('pieceEnabled',form.pieceEnabled);
+    fd.append('boxEnabled',form.boxEnabled);
+    fd.append('piecesPerBox',form.piecesPerBox||'1');
     fd.append('description',form.description);
     fd.append('codAvailable',form.codAvailable);
     fd.append('features',JSON.stringify(form.features.map(getResolvedFeatureValue).filter(Boolean)));
@@ -871,6 +879,25 @@ const Dashboard=()=>{
             <div className="space-y-2">
               <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Stock Count</label>
               <input type="number" value={form.countInStock} onChange={e=>setForm(p=>({...p,countInStock:e.target.value}))} required placeholder="Stock Count" className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"/>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Unit Support</label>
+              <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
+                <label className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
+                  <input type="checkbox" checked={form.pieceEnabled} onChange={e=>setForm(p=>({...p,pieceEnabled:e.target.checked}))} className="h-4 w-4 accent-primary-600"/>
+                  Piece
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
+                  <input type="checkbox" checked={form.boxEnabled} onChange={e=>setForm(p=>({...p,boxEnabled:e.target.checked,piecesPerBox:e.target.checked?p.piecesPerBox||'6':'1'}))} className="h-4 w-4 accent-primary-600"/>
+                  Box
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Pieces Per Box</label>
+              <input type="number" min="1" value={form.piecesPerBox} onChange={e=>setForm(p=>({...p,piecesPerBox:e.target.value}))} disabled={!form.boxEnabled} placeholder="Pieces in one box" className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40 disabled:cursor-not-allowed disabled:opacity-50"/>
             </div>
 
                 </div>

@@ -109,6 +109,19 @@ const productSchema = mongoose.Schema(
       required: true,
       default: 0,
     },
+    pieceEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    boxEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    piecesPerBox: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
     codAvailable: {
       type: Boolean,
       default: true,
