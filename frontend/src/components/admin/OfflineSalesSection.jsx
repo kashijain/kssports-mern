@@ -739,7 +739,7 @@ const OfflineSalesSection = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.75fr)_420px]">
+        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-6">
           <div className="space-y-6">
             <div className="rounded-[1.75rem] border border-white/10 bg-[#151b24]/80 p-6 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]">
               <div className="flex items-center justify-between gap-4">
@@ -885,7 +885,7 @@ const OfflineSalesSection = () => {
             </div>
           </div>
 
-          <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+          <div className="space-y-6">
             <div className="rounded-[1.75rem] border border-white/10 bg-[#151b24]/80 p-6 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.95)]">
               <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary-300">Summary Card</p>
               <h4 className="mt-2 text-xl font-black tracking-tight text-white">Invoice Totals</h4>
