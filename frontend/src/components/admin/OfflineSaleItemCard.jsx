@@ -2,7 +2,7 @@ import { AlertCircle, Trash2 } from 'lucide-react';
 import { formatPrice } from '../../utils/price';
 
 const inputBaseClass =
-  'h-12 w-full min-w-0 rounded-2xl border border-white/10 bg-[#0b1118]/70 px-4 text-sm font-semibold text-white outline-none transition-all placeholder:text-slate-600 focus:border-primary-500/50 focus:bg-[#0e141d] focus:shadow-[0_0_0_4px_rgba(220,38,38,0.08)]';
+  'h-12 w-full min-w-0 appearance-none rounded-2xl border border-white/10 bg-[#0b1118]/70 px-4 text-sm font-semibold text-white outline-none transition-all placeholder:text-slate-600 focus:border-primary-500/50 focus:bg-[#0e141d] focus:shadow-[0_0_0_4px_rgba(220,38,38,0.08)]';
 
 const labelClass =
   'text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500';
