@@ -8,6 +8,7 @@ import {
   Download,
   FileUp,
   Filter,
+  MessageCircle,
   Plus,
   Package,
   Pencil,
@@ -19,6 +20,11 @@ import {
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/price';
 import BillModal from './BillModal';
+import {
+  buildInvoiceDataFromSale,
+  buildWhatsAppBillMessage,
+  formatPhoneForWhatsApp,
+} from './billUtils';
 import OfflineSaleItemCard from './OfflineSaleItemCard';
 
 const paymentModes = ['Cash', 'UPI', 'Online', 'Mixed', 'Pending'];
@@ -41,6 +47,7 @@ const emptyPendingSummary = {
 const createEmptyForm = () => ({
   saleDate: getToday(),
   customerName: '',
+  customerPhone: '',
   paidAmount: '',
   paymentMode: 'Cash',
   notes: '',
@@ -322,55 +329,113 @@ const OfflineSalesSection = () => {
     });
   };
 
-  const handleSubmit = async (event, shouldOpenBill = false) => {
-    event.preventDefault();
-
+  const getNormalizedSaleItems = () => {
     const normalizedItems = saleItems.map((item) => buildSaleItemState(item, products));
     setSaleItems(normalizedItems);
+    return normalizedItems;
+  };
+
+  const validateBillDraft = () => {
+    const normalizedItems = getNormalizedSaleItems();
 
     if (!normalizedItems.length || normalizedItems.every((item) => !item.productId)) {
       toast.error('Add products to create bill');
-      return;
+      return null;
     }
 
     const invalidItem = normalizedItems.find((item) => !item.productId || item.error);
     if (invalidItem) {
       toast.error(invalidItem.error || 'Please select a product for every bill item');
-      return;
+      return null;
     }
 
     if (pendingAmount > 0 && !form.customerName.trim()) {
       toast.error('Customer name is required when payment is pending');
-      return;
+      return null;
     }
 
     if (paidAmountValue > billSummary.totalSale) {
       toast.error('Paid amount cannot be greater than grand total sale');
+      return null;
+    }
+
+    return normalizedItems;
+  };
+
+  const createDraftSaleData = (normalizedItems) => ({
+    saleDate: form.saleDate,
+    customerName: form.customerName.trim(),
+    customerPhone: form.customerPhone.trim(),
+    paymentMode: form.paymentMode,
+    receivedAmount: paidAmountValue,
+    pendingAmount,
+    notes: form.notes,
+    items: normalizedItems.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      quantity: Number(item.quantity) || 0,
+      salePrice: Number(item.salePrice) || 0,
+      costPrice: Number(item.costPrice) || 0,
+      totalSale: Number(item.lineTotalSale) || 0,
+      totalCost: Number(item.lineTotalCost) || 0,
+      profit: Number(item.lineProfit) || 0,
+    })),
+    totalSale: billSummary.totalSale,
+    totalCost: billSummary.totalCost,
+    totalProfit: billSummary.totalProfit,
+  });
+
+  const openWhatsAppForInvoice = (invoiceData, rawPhone) => {
+    const formattedPhone = formatPhoneForWhatsApp(rawPhone);
+
+    if (!formattedPhone) {
+      toast.error('Enter a valid customer mobile number to send the bill on WhatsApp');
+      return;
+    }
+
+    const message = buildWhatsAppBillMessage(invoiceData);
+    window.open(
+      `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
+  const handleSendBillViaWhatsApp = () => {
+    const normalizedItems = validateBillDraft();
+
+    if (!normalizedItems) {
+      return;
+    }
+
+    const draftSale = createDraftSaleData(normalizedItems);
+    const invoiceData = buildInvoiceDataFromSale(draftSale);
+    openWhatsAppForInvoice(invoiceData, form.customerPhone);
+  };
+
+  const handleSubmit = async (event, shouldOpenBill = false) => {
+    event.preventDefault();
+
+    const normalizedItems = validateBillDraft();
+
+    if (!normalizedItems) {
       return;
     }
 
     setSubmitting(true);
 
+    const draftSale = createDraftSaleData(normalizedItems);
     const payload = {
-      saleDate: form.saleDate,
-      customerName: form.customerName,
-      paymentMode: form.paymentMode,
-      paidAmount: paidAmountValue,
-      pendingAmount,
-      notes: form.notes,
-      items: normalizedItems.map((item) => ({
-        productId: item.productId,
-        productName: item.productName,
-        quantity: Number(item.quantity) || 0,
-        salePrice: Number(item.salePrice) || 0,
-        costPrice: Number(item.costPrice) || 0,
-        totalSale: Number(item.lineTotalSale) || 0,
-        totalCost: Number(item.lineTotalCost) || 0,
-        profit: Number(item.lineProfit) || 0,
-      })),
-      totalSale: billSummary.totalSale,
-      totalCost: billSummary.totalCost,
-      totalProfit: billSummary.totalProfit,
+      saleDate: draftSale.saleDate,
+      customerName: draftSale.customerName,
+      paymentMode: draftSale.paymentMode,
+      paidAmount: draftSale.receivedAmount,
+      pendingAmount: draftSale.pendingAmount,
+      notes: draftSale.notes,
+      items: draftSale.items,
+      totalSale: draftSale.totalSale,
+      totalCost: draftSale.totalCost,
+      totalProfit: draftSale.totalProfit,
     };
 
     try {
@@ -387,7 +452,10 @@ const OfflineSalesSection = () => {
       }
 
       if (shouldOpenBill && savedSale) {
-        setBillPreviewSale(savedSale);
+        setBillPreviewSale({
+          ...savedSale,
+          customerPhone: draftSale.customerPhone,
+        });
       }
 
       resetForm();
@@ -435,6 +503,7 @@ const OfflineSalesSection = () => {
     setForm({
       saleDate: sale.saleDate?.slice(0, 10) || getToday(),
       customerName: sale.customerName || '',
+      customerPhone: sale.customerPhone || '',
       paidAmount: String(
         sale.receivedAmount ?? Math.max((Number(sale.totalSale) || 0) - (Number(sale.pendingAmount) || 0), 0)
       ),
@@ -805,6 +874,18 @@ const OfflineSalesSection = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Customer Mobile Number</label>
+                  <input
+                    type="tel"
+                    value={form.customerPhone}
+                    onChange={(event) => setForm((current) => ({ ...current, customerPhone: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-primary-500/40"
+                    placeholder="9876543210 or +91 9876543210"
+                    inputMode="tel"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Paid Amount</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -918,6 +999,15 @@ const OfflineSalesSection = () => {
                 >
                   <ReceiptText size={16} />
                   Save and Generate Bill
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendBillViaWhatsApp}
+                  disabled={submitting}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-6 py-4 text-sm font-black uppercase tracking-[0.18em] text-emerald-200 transition-all hover:bg-emerald-500/15 disabled:opacity-60"
+                >
+                  <MessageCircle size={16} />
+                  Send via WhatsApp
                 </button>
                 <button
                   type="button"
@@ -1157,7 +1247,11 @@ const OfflineSalesSection = () => {
         </div>
       </section>
 
-      <BillModal sale={billPreviewSale} onClose={() => setBillPreviewSale(null)} />
+      <BillModal
+        sale={billPreviewSale}
+        customerPhone={billPreviewSale?.customerPhone}
+        onClose={() => setBillPreviewSale(null)}
+      />
     </div>
   );
 };

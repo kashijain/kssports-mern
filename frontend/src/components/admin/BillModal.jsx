@@ -1,12 +1,16 @@
 import { Download, MessageCircle, Printer, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatPrice } from '../../utils/price';
-
-const storeInfo = {
-  name: 'K.S. Sports',
-  address: 'K.S. Sports, Shiv Colony',
-  phone: '+91 7082252531',
-};
+import {
+  buildInvoiceDataFromSale,
+  buildWhatsAppBillMessage,
+  formatBillDate,
+  formatPhoneForWhatsApp,
+  generateBillNumber,
+  getBillItems,
+  getBillTotals,
+  storeInfo,
+} from './billUtils';
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -15,67 +19,6 @@ const escapeHtml = (value = '') =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
-
-const formatBillDate = (dateValue) => {
-  if (!dateValue) {
-    return new Date().toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  }
-
-  return new Date(dateValue).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-};
-
-const generateBillNumber = (sale) => {
-  const saleDate = new Date(sale?.saleDate || sale?.createdAt || Date.now());
-  const dateCode = saleDate.toISOString().slice(0, 10).replaceAll('-', '');
-  const token = String(sale?._id || sale?.createdAt || Date.now()).slice(-6).toUpperCase();
-
-  return `KS-OFF-${dateCode}-${token}`;
-};
-
-const getBillTotals = (sale) => {
-  const subtotal = Number(sale?.totalSale) || 0;
-  const pendingAmount = Math.max(Number(sale?.pendingAmount) || 0, 0);
-  const paidAmount = sale?.receivedAmount !== undefined
-    ? Number(sale.receivedAmount) || 0
-    : Math.max(subtotal - pendingAmount, 0);
-
-  return {
-    subtotal,
-    pendingAmount,
-    paidAmount,
-  };
-};
-
-const getBillItems = (sale) => {
-  if (Array.isArray(sale?.items) && sale.items.length > 0) {
-    return sale.items.map((item) => ({
-      productName: item.productName || item.product?.name || 'Offline Sale Item',
-      quantity: Number(item.quantity) || 0,
-      unitPrice: Number(item.salePrice) || 0,
-      lineTotal: Number(item.totalSale) || (Number(item.quantity) || 0) * (Number(item.salePrice) || 0),
-    }));
-  }
-
-  const quantity = Number(sale?.quantitySold) || 0;
-  const unitPrice = Number(sale?.salePricePerItem) || 0;
-
-  return [
-    {
-      productName: sale?.productName || sale?.product?.name || 'Offline Sale Item',
-      quantity,
-      unitPrice,
-      lineTotal: Number(sale?.totalSale) || quantity * unitPrice,
-    },
-  ];
-};
 
 const buildPrintableHtml = (sale) => {
   const billNumber = generateBillNumber(sale);
@@ -270,15 +213,19 @@ const buildPrintableHtml = (sale) => {
 </html>`;
 };
 
-const BillModal = ({ sale, onClose }) => {
+const BillModal = ({ sale, onClose, customerPhone = '' }) => {
   if (!sale) {
     return null;
   }
 
-  const billNumber = generateBillNumber(sale);
-  const billDate = formatBillDate(sale.saleDate || sale.createdAt);
-  const billItems = getBillItems(sale);
-  const { subtotal, paidAmount, pendingAmount } = getBillTotals(sale);
+  const resolvedSale = {
+    ...sale,
+    customerPhone: customerPhone || sale.customerPhone || '',
+  };
+  const billNumber = generateBillNumber(resolvedSale);
+  const billDate = formatBillDate(resolvedSale.saleDate || resolvedSale.createdAt);
+  const billItems = getBillItems(resolvedSale);
+  const { subtotal, paidAmount, pendingAmount } = getBillTotals(resolvedSale);
 
   const openPrintableBill = () => {
     const printWindow = window.open('', '_blank', 'width=980,height=900,scrollbars=yes,resizable=yes');
@@ -289,7 +236,7 @@ const BillModal = ({ sale, onClose }) => {
     }
 
     printWindow.document.open();
-    printWindow.document.write(buildPrintableHtml(sale));
+    printWindow.document.write(buildPrintableHtml(resolvedSale));
     printWindow.document.close();
 
     printWindow.onload = () => {
@@ -301,11 +248,19 @@ const BillModal = ({ sale, onClose }) => {
   };
 
   const handleShareOnWhatsApp = () => {
-    const itemSummary = billItems
-      .map((item) => `${item.productName} x ${item.quantity} = ${formatPrice(item.lineTotal)}`)
-      .join('\n');
-    const message = `K.S. Sports Offline Sale Bill\nBill No: ${billNumber}\nCustomer: ${sale.customerName || 'Walk-in Customer'}\n${itemSummary}\nTotal: ${formatPrice(subtotal)}\nPaid: ${formatPrice(paidAmount)}\nPending: ${formatPrice(pendingAmount)}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    const formattedPhone = formatPhoneForWhatsApp(resolvedSale.customerPhone);
+
+    if (!formattedPhone) {
+      toast.error('Enter a valid customer mobile number to send the invoice on WhatsApp');
+      return;
+    }
+
+    const message = buildWhatsAppBillMessage(buildInvoiceDataFromSale(resolvedSale));
+    window.open(
+      `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   return (
@@ -341,7 +296,7 @@ const BillModal = ({ sale, onClose }) => {
               className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-200 transition-all hover:bg-emerald-500/15"
             >
               <MessageCircle size={14} />
-              WhatsApp
+              Send via WhatsApp
             </button>
             <button
               type="button"
@@ -373,12 +328,13 @@ const BillModal = ({ sale, onClose }) => {
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-white/10 bg-[#0d1118] p-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Customer Name</p>
-                <p className="mt-3 text-lg font-black text-white">{sale.customerName || 'Walk-in Customer'}</p>
-                <p className="mt-2 text-sm text-slate-400">{sale.notes || 'Thank you for shopping with us.'}</p>
+                <p className="mt-3 text-lg font-black text-white">{resolvedSale.customerName || 'Walk-in Customer'}</p>
+                <p className="mt-2 text-sm text-slate-400">{resolvedSale.customerPhone || 'Customer mobile number not added'}</p>
+                <p className="mt-2 text-sm text-slate-400">{resolvedSale.notes || 'Thank you for shopping with us.'}</p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-[#0d1118] p-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Payment Mode</p>
-                <p className="mt-3 text-lg font-black text-white">{sale.paymentMode || 'Cash'}</p>
+                <p className="mt-3 text-lg font-black text-white">{resolvedSale.paymentMode || 'Cash'}</p>
                 <p className="mt-2 text-sm text-slate-400">Invoice generated for offline counter sale.</p>
               </div>
             </div>
