@@ -7,7 +7,7 @@ It allows seamless management of **online orders, offline sales, stock tracking,
 
 ## 🚀 Live Demo
 
-👉 https://kssports-frontend.onrender.com/
+👉 https://kssports-jy5q.onrender.com
 
 ---
 
