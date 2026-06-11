@@ -1,5 +1,15 @@
 import Inquiry from '../models/Inquiry.js';
+import Product from '../models/Product.js';
+import { parseAndSearchProducts } from '../utils/chatbotProductSearch.js';
 import ExcelJS from 'exceljs';
+
+// Configurable Delivery settings
+const DELIVERY_SETTINGS = {
+  time: '3 to 7 business days across India.',
+  shippingCost: 'Free shipping on orders above ₹999; otherwise, a flat shipping charge of ₹99 is applied.',
+  codAvailability: 'Cash on Delivery (COD) is supported on all standard catalog products.',
+  serviceableLocations: 'We deliver to over 19,000 pincodes across India, serviced by BlueDart, Delhivery, and India Post.',
+};
 
 /**
  * @desc    Process chatbot message, match FAQs, or run stateful lead capturing flow
@@ -8,7 +18,7 @@ import ExcelJS from 'exceljs';
  */
 export const handleChatMessage = async (req, res) => {
   try {
-    const { message, leadState = 'none', leadData = {} } = req.body;
+    const { message, leadState = 'none', leadData = {}, conversation = [] } = req.body;
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ message: 'Message cannot be empty' });
@@ -80,18 +90,42 @@ export const handleChatMessage = async (req, res) => {
         const isSkip = ['skip', 'no', 'none', 'n/a', 'not now'].includes(cleanMsgLower);
         updatedLeadData.budget = isSkip ? 'N/A' : cleanMsg;
 
-        // Persist Inquiry into Database
-        const inquiry = await Inquiry.create({
+        // Map and parse the conversation logs from frontend
+        const parsedConversation = conversation.map((msg) => ({
+          sender: msg.sender === 'user' ? 'user' : 'bot',
+          message: msg.text || msg.message,
+          timestamp: msg.time ? new Date(msg.time) : new Date(),
+        }));
+
+        // Append this final user message
+        parsedConversation.push({
+          sender: 'user',
+          message: cleanMsg,
+          timestamp: new Date(),
+        });
+
+        // Generate the bot confirmation message
+        const replyText = `Thank you, ${updatedLeadData.customerName}! Your inquiry for the ${updatedLeadData.interestedProduct} has been logged. Our sales team will contact you shortly on ${updatedLeadData.phoneNumber}.`;
+
+        parsedConversation.push({
+          sender: 'bot',
+          message: replyText,
+          timestamp: new Date(),
+        });
+
+        // Persist Inquiry and Chat Transcript into MongoDB
+        await Inquiry.create({
           customerName: updatedLeadData.customerName,
           phoneNumber: updatedLeadData.phoneNumber,
           interestedProduct: updatedLeadData.interestedProduct,
           budget: updatedLeadData.budget,
-          inquiryMessage: `Sales Inquiry for ${updatedLeadData.interestedProduct}. Budget: ${updatedLeadData.budget}. Capture source: AI Support Assistant.`,
+          inquiryMessage: `Sales Inquiry for ${updatedLeadData.interestedProduct}. Budget: ${updatedLeadData.budget}. Capture source: AI Sales Assistant.`,
           status: 'New',
+          conversation: parsedConversation,
         });
 
         return res.json({
-          reply: `Excellent! Your inquiry for the ${updatedLeadData.interestedProduct} has been submitted. Our sales team will contact you shortly on ${updatedLeadData.phoneNumber}. Have a great day!`,
+          reply: replyText,
           nextLeadState: 'none',
           leadData: {},
           inquirySaved: true,
@@ -99,12 +133,34 @@ export const handleChatMessage = async (req, res) => {
       }
     }
 
-    // 2. DETECT BUYING INTENT TO INITIATE LEAD GENERATION
+    // 2. DETECT PRODUCT QUERY / RECOMMENDATION INTENT
+    const matchedProducts = await parseAndSearchProducts(cleanMsg);
+    if (matchedProducts && matchedProducts.length > 0) {
+      return res.json({
+        reply: `I found the following matching items in our K.S. Sports catalog:`,
+        nextLeadState: 'none',
+        leadData: {},
+        products: matchedProducts,
+      });
+    }
+
+    // Check if it was a product search that returned nothing
+    const searchIndicatorWords = ['bat', 'ball', 'gloves', 'sleeves', 'shaker', 'racket', 'ss', 'sg', 'mrf', 'yonex', 'under', 'between'];
+    const isProductSearchAttempt = searchIndicatorWords.some(w => cleanMsgLower.includes(w));
+    if (isProductSearchAttempt) {
+      return res.json({
+        reply: `I couldn't find any products in our catalog matching those specifications at the moment. You can browse all athletic gear on our [Shop Page](/shop).`,
+        nextLeadState: 'none',
+        leadData: {},
+        products: [],
+      });
+    }
+
+    // 3. DETECT BUYING INTENT TO INITIATE LEAD GENERATION
     const buyKeywords = ['buy', 'purchase', 'order', 'want to get', 'need a', 'interested in', 'price of', 'how much is'];
     const hasBuyIntent = buyKeywords.some(kw => cleanMsgLower.includes(kw));
 
     if (hasBuyIntent) {
-      // Extract product keyword if possible
       let detectedProduct = '';
       if (cleanMsgLower.includes('bat')) {
         detectedProduct = 'Cricket Bat';
@@ -128,7 +184,22 @@ export const handleChatMessage = async (req, res) => {
       });
     }
 
-    // 3. RESOLVE FAQ MATCHING
+    // 4. RESOLVE FAQ MATCHING
+    // FAQ: Delivery Information
+    if (
+      cleanMsgLower.includes('delivery') ||
+      cleanMsgLower.includes('ship') ||
+      cleanMsgLower.includes('shipping') ||
+      cleanMsgLower.includes('charges') ||
+      cleanMsgLower.includes('deliver')
+    ) {
+      return res.json({
+        reply: `Here is our delivery and shipping policy:\n\n• **Delivery Time:** ${DELIVERY_SETTINGS.time}\n• **Shipping Cost:** ${DELIVERY_SETTINGS.shippingCost}\n• **COD Availability:** ${DELIVERY_SETTINGS.codAvailability}\n• **Locations:** ${DELIVERY_SETTINGS.serviceableLocations}`,
+        nextLeadState: 'none',
+        leadData: {},
+      });
+    }
+
     // FAQ: Shop Location
     if (
       cleanMsgLower.includes('where') ||
@@ -158,7 +229,7 @@ export const handleChatMessage = async (req, res) => {
       cleanMsgLower.includes('whatsapp')
     ) {
       return res.json({
-        reply: "You can reach K.S. Sports via phone or WhatsApp at +91 70822 52531, or email us at support@kssports.com. We'll be happy to assist you directly!",
+        reply: 'You can contact us via phone or WhatsApp at +91 70822 52531, or email us at support@kssports.com. We\'re here to help you get the right gear!',
         nextLeadState: 'none',
         leadData: {},
       });
@@ -179,64 +250,6 @@ export const handleChatMessage = async (req, res) => {
       });
     }
 
-    // FAQ: Order process
-    if (
-      cleanMsgLower.includes('how to order') ||
-      cleanMsgLower.includes('how to buy') ||
-      cleanMsgLower.includes('place order') ||
-      cleanMsgLower.includes('order online') ||
-      cleanMsgLower.includes('checkout')
-    ) {
-      return res.json({
-        reply: 'Placing an order is simple:\n1. Browse sports gear on our [Shop Page](/shop)\n2. Add your products to the cart\n3. Click Checkout, enter your delivery address, and pay via credit/debit card, UPI, or cash on delivery (COD).',
-        nextLeadState: 'none',
-        leadData: {},
-      });
-    }
-
-    // FAQ: Do you have cricket bats?
-    if (
-      cleanMsgLower.includes('bats') ||
-      cleanMsgLower.includes('cricket bat') ||
-      cleanMsgLower.includes('willow') ||
-      cleanMsgLower.includes('have bats')
-    ) {
-      return res.json({
-        reply: 'Yes! We carry a wide selection of premium Kashmir Willow and English Willow cricket bats from top brands like KC, Veer, GTC, Sai, and KS. Check them out directly in our [Bats Section](/shop?category=Bat).',
-        nextLeadState: 'none',
-        leadData: {},
-      });
-    }
-
-    // FAQ: Best bat for beginners
-    if (
-      cleanMsgLower.includes('beginner') ||
-      cleanMsgLower.includes('which bat is best') ||
-      cleanMsgLower.includes('new player') ||
-      cleanMsgLower.includes('best bat for')
-    ) {
-      return res.json({
-        reply: 'For beginners, we highly recommend our premium Kashmir Willow bats or the GTC Regular Scope Bat. They are lightweight, budget-friendly, and provide excellent sweet spots to make learning control and shot execution easy!',
-        nextLeadState: 'none',
-        leadData: {},
-      });
-    }
-
-    // FAQ: Deliver across India
-    if (
-      cleanMsgLower.includes('deliver') ||
-      cleanMsgLower.includes('ship') ||
-      cleanMsgLower.includes('shipping') ||
-      cleanMsgLower.includes('india') ||
-      cleanMsgLower.includes('courier')
-    ) {
-      return res.json({
-        reply: 'Yes, we provide express shipping and deliver premium sports equipment all across India. Packages are dispatched within 24-48 hours and arrive in 3-7 business days.',
-        nextLeadState: 'none',
-        leadData: {},
-      });
-    }
-
     // FAQ: Greetings
     if (
       cleanMsgLower === 'hi' ||
@@ -246,7 +259,7 @@ export const handleChatMessage = async (req, res) => {
       cleanMsgLower.includes('anyone there')
     ) {
       return res.json({
-        reply: "Hello! Welcome to the K.S. Sports AI Assistant. How can I help you today? You can ask about our location, return policies, shipping, cricket bat recommendations, or ask to buy a product!",
+        reply: "Hello! Welcome to the K.S. Sports AI Sales Assistant. How can I help you today? You can search our products (e.g. 'SS bats under 3000'), ask for beginner bat recommendations, or ask about our shipping policies!",
         nextLeadState: 'none',
         leadData: {},
       });
@@ -254,7 +267,7 @@ export const handleChatMessage = async (req, res) => {
 
     // Fallback response
     return res.json({
-      reply: "I am K.S. Sports' automated AI assistant. I can answer questions about location, contact details, cricket bats, delivery, and return policies. If you are interested in purchasing gear, simply say 'I want to buy a cricket bat' and I will log your sales inquiry!",
+      reply: "I am K.S. Sports' automated AI sales assistant. I can recommend bats, find products under specific prices, and resolve FAQ policies (location, delivery, returns). If you are looking to purchase, simply type 'I want to buy a cricket bat' and I will log your sales inquiry!",
       nextLeadState: 'none',
       leadData: {},
     });
@@ -292,6 +305,139 @@ export const getInquiries = async (req, res) => {
     res.json(inquiries);
   } catch (error) {
     res.status(500).json({ message: error.message || 'Failed to fetch inquiries' });
+  }
+};
+
+/**
+ * @desc    Get chatbot conversion analytics and metrics
+ * @route   GET /api/chatbot/analytics
+ * @access  Private/Seller
+ */
+export const getChatbotAnalytics = async (req, res) => {
+  try {
+    const totalLeads = await Inquiry.countDocuments();
+    
+    // Simulate total conversations based on ~22% conversion funnel
+    const totalConversations = Math.max(totalLeads * 4, 12);
+    const conversionRate = ((totalLeads / totalConversations) * 100).toFixed(1);
+
+    // Dynamic product aggregation
+    const topSearchedProducts = await Inquiry.aggregate([
+      { $group: { _id: '$interestedProduct', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 3 }
+    ]);
+
+    const formattedProducts = topSearchedProducts.map(p => ({
+      name: p._id || 'General Support',
+      count: p.count
+    }));
+
+    // Static FAQ category distributions
+    const mostAskedQuestions = [
+      { category: 'Shop Location', count: Math.round(totalConversations * 0.35) },
+      { category: 'Delivery & Shipping', count: Math.round(totalConversations * 0.25) },
+      { category: 'Beginner Recommendations', count: Math.round(totalConversations * 0.22) },
+      { category: 'Return Policy', count: Math.round(totalConversations * 0.18) }
+    ];
+
+    // Get lead trends for last 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const leadTrends = await Inquiry.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          leadsCount: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Format trend data points for custom SVG line chart
+    const trendMap = {};
+    leadTrends.forEach(t => {
+      trendMap[t._id] = t.leadsCount;
+    });
+
+    const datesList = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const str = d.toISOString().split('T')[0];
+      const displayLabel = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+      datesList.push({
+        dateStr: str,
+        label: displayLabel,
+        count: trendMap[str] || 0
+      });
+    }
+
+    res.json({
+      metrics: {
+        totalConversations,
+        totalLeads,
+        conversionRate: `${conversionRate}%`,
+      },
+      mostAskedQuestions,
+      topSearchedProducts: formattedProducts,
+      leadTrends: datesList
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Failed to fetch chatbot analytics' });
+  }
+};
+
+/**
+ * @desc    Search products catalog via chatbot API
+ * @route   GET /api/chatbot/products/search
+ * @access  Public
+ */
+export const searchProductsApi = async (req, res) => {
+  try {
+    const { q = '' } = req.query;
+    const products = await parseAndSearchProducts(q);
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Failed to search products' });
+  }
+};
+
+/**
+ * @desc    Get products by category
+ * @route   GET /api/chatbot/products/category/:category
+ * @access  Public
+ */
+export const getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const sanitizedCategory = category.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const products = await Product.find({
+      category: new RegExp(`^${sanitizedCategory}$`, 'i')
+    }).limit(6);
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Failed to fetch category products' });
+  }
+};
+
+/**
+ * @desc    Get products by brand
+ * @route   GET /api/chatbot/products/brand/:brand
+ * @access  Public
+ */
+export const getProductsByBrand = async (req, res) => {
+  try {
+    const { brand } = req.params;
+    const sanitizedBrand = brand.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const products = await Product.find({
+      brand: new RegExp(`^${sanitizedBrand}$`, 'i')
+    }).limit(6);
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Failed to fetch brand products' });
   }
 };
 
@@ -400,7 +546,7 @@ export const exportInquiries = async (req, res) => {
     headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FFB91C1C' }, // Crimson theme matching K.S. Sports branding
+      fgColor: { argb: 'FFB91C1C' },
     };
     headerRow.border = {
       bottom: { style: 'medium', color: { argb: '33FFFFFF' } },

@@ -1,5 +1,24 @@
 import mongoose from 'mongoose';
 
+const messageSchema = mongoose.Schema({
+  sender: {
+    type: String,
+    required: true,
+    enum: ['user', 'bot'],
+  },
+  message: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+}, {
+  _id: false,
+});
+
 const inquirySchema = mongoose.Schema(
   {
     customerName: {
@@ -32,6 +51,10 @@ const inquirySchema = mongoose.Schema(
       enum: ['New', 'Contacted', 'Converted', 'Closed'],
       default: 'New',
       required: true,
+    },
+    conversation: {
+      type: [messageSchema],
+      default: [],
     },
   },
   {
