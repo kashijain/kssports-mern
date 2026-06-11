@@ -22,3 +22,14 @@ export const CategorySkeleton = () => {
     <div className="rounded-2xl overflow-hidden aspect-square bg-slate-200 dark:bg-gray-800 animate-pulse border border-slate-100 dark:border-dark-border" />
   );
 };
+
+export const PageLoader = () => {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full gap-4">
+      <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-600/30 border-t-primary-600"></div>
+      <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 animate-pulse">
+        Loading Gear...
+      </p>
+    </div>
+  );
+};

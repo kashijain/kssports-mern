@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useProductStore } from "../store/useStore";
 import VisualSearchModal from "../components/product/VisualSearchModal";
+import { Helmet } from "react-helmet-async";
 
 const categoryOptions = [
   { label: "All", values: ["All"] },
@@ -171,6 +172,14 @@ const Shop = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 pb-24">
+      <Helmet>
+        <title>Shop Premium Sports Gear - K.S. Sports</title>
+        <meta name="description" content="Browse our premium selection of sports goods. Filter by category, price, and rating to find the perfect gear for your match or practice session." />
+        <link rel="canonical" href="https://kssports-mern-96j7.vercel.app/shop" />
+        <meta property="og:title" content="Shop Premium Sports Gear - K.S. Sports" />
+        <meta property="og:description" content="Browse our premium selection of sports goods. Filter by category, price, and rating to find the perfect gear for your match or practice session." />
+        <meta property="og:url" content="https://kssports-mern-96j7.vercel.app/shop" />
+      </Helmet>
       <div className="container-bound pt-8">
         <div className="relative mb-12 overflow-hidden rounded-[2.25rem] border border-white/10 bg-[#0c1017] px-6 py-16 shadow-[0_28px_80px_-40px_rgba(0,0,0,0.9)] md:px-10 md:py-20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_24%),linear-gradient(180deg,rgba(2,6,23,0),rgba(2,6,23,0.55))]"></div>

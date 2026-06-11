@@ -160,9 +160,21 @@ const Chatbot = () => {
       <button
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label="Toggle AI Chatbot"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-[#11151d] border border-white/10 text-white shadow-lg shadow-red-500/20 hover:-translate-y-0.5 hover:border-red-500/40 transition-all duration-200"
+        className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-red-600 to-orange-500 text-white shadow-[0_8px_32px_rgba(239,68,68,0.4)] hover:shadow-[0_12px_40px_rgba(239,68,68,0.6)] hover:-translate-y-1 transition-all duration-300 group border border-white/20"
       >
-        {isOpen ? <X size={20} /> : <Bot size={22} className="animate-pulse text-red-500" />}
+        {/* Outer glowing pulsing rings */}
+        {!isOpen && (
+          <>
+            <span className="absolute inset-0 rounded-full bg-gradient-to-tr from-red-600 to-orange-500 opacity-75 animate-ping duration-1000"></span>
+            <span className="absolute -inset-1 rounded-full bg-gradient-to-tr from-red-600 to-orange-500 opacity-20 blur-sm group-hover:opacity-40 transition-opacity"></span>
+          </>
+        )}
+        
+        {isOpen ? (
+          <X size={22} className="relative z-10 transition-transform duration-300 rotate-0 group-hover:rotate-90" />
+        ) : (
+          <Bot size={26} className="relative z-10 animate-pulse text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)] transition-transform duration-300 group-hover:scale-110" />
+        )}
       </button>
 
       {/* Chat Window Overlay */}
@@ -180,8 +192,8 @@ const Chatbot = () => {
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-600 via-red-500 to-primary-600 animate-gradient-xy"></div>
               
               <div className="flex items-center gap-3">
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary-600/20 text-primary-400">
-                  <Bot size={20} />
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-red-600 to-orange-500 text-white shadow-[0_4px_12px_rgba(239,68,68,0.3)]">
+                  <Bot size={20} className="drop-shadow-[0_1px_4px_rgba(0,0,0,0.3)]" />
                   <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0f131b]"></span>
                 </div>
                 <div>

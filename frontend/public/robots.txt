@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kssports-mern-96j7.vercel.app/sitemap.xml

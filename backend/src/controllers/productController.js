@@ -282,7 +282,7 @@ export const getProducts = async (req, res) => {
   const keyword = req.query.keyword
     ? {
         name: {
-          $regex: req.query.keyword,
+          $regex: String(req.query.keyword).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
           $options: 'i',
         },
       }
@@ -332,16 +332,6 @@ export const createProduct = async (req, res) => {
   }
 
   const primaryImage = images[0] || DEFAULT_PRODUCT_IMAGE;
-  let imageEmbedding = undefined;
-
-  if (!isPlaceholderImage(primaryImage)) {
-    try {
-      console.log(`[CLIP] Generating embedding for new product: "${name}"...`);
-      imageEmbedding = await getEmbedding(primaryImage);
-    } catch (err) {
-      console.error('[CLIP] Failed to generate embedding on product creation:', err.message);
-    }
-  }
 
   const product = await Product.create({
     name: name.trim(),
@@ -350,7 +340,6 @@ export const createProduct = async (req, res) => {
     user: req.user._id,
     image: primaryImage,
     images,
-    imageEmbedding,
     brand: brand.trim(),
     category: category.trim(),
     countInStock: Number(countInStock) || 0,
@@ -363,6 +352,18 @@ export const createProduct = async (req, res) => {
     numReviews: 0,
     description: description.trim(),
   });
+
+  if (!isPlaceholderImage(primaryImage)) {
+    console.log(`[CLIP] Enqueuing background embedding generation for new product: "${name.trim()}"...`);
+    getEmbedding(primaryImage)
+      .then(async (embedding) => {
+        await Product.findByIdAndUpdate(product._id, { imageEmbedding: embedding });
+        console.log(`[CLIP] Background embedding generation succeeded for "${name.trim()}"`);
+      })
+      .catch((err) => {
+        console.error(`[CLIP] Background embedding generation failed for "${name.trim()}":`, err.message);
+      });
+  }
 
   res.status(201).json(product);
 };
@@ -412,21 +413,29 @@ export const updateProduct = async (req, res) => {
   product.images = nextImages;
   product.image = nextPrimaryImage;
 
+  let shouldRegenerateEmbedding = false;
   if (nextPrimaryImage !== prevPrimaryImage || !product.imageEmbedding || product.imageEmbedding.length === 0) {
-    if (!isPlaceholderImage(nextPrimaryImage)) {
-      try {
-        console.log(`[CLIP] Primary image changed. Regenerating embedding for "${product.name}"...`);
-        product.imageEmbedding = await getEmbedding(nextPrimaryImage);
-      } catch (err) {
-        console.error('[CLIP] Failed to regenerate embedding on product update:', err.message);
-      }
-    } else {
+    if (isPlaceholderImage(nextPrimaryImage)) {
       product.imageEmbedding = undefined;
+    } else {
+      shouldRegenerateEmbedding = true;
     }
   }
 
   const updatedProduct = await product.save();
   res.json(updatedProduct);
+
+  if (shouldRegenerateEmbedding) {
+    console.log(`[CLIP] Enqueuing background embedding regeneration for "${product.name}"...`);
+    getEmbedding(nextPrimaryImage)
+      .then(async (embedding) => {
+        await Product.findByIdAndUpdate(product._id, { imageEmbedding: embedding });
+        console.log(`[CLIP] Background embedding regeneration succeeded for "${product.name}"`);
+      })
+      .catch((err) => {
+        console.error(`[CLIP] Background embedding regeneration failed for "${product.name}":`, err.message);
+      });
+  }
 };
 
 export const visualSearchProducts = async (req, res) => {

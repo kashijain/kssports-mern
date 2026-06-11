@@ -253,12 +253,14 @@ export const getPurchaseBills = async (req, res) => {
     filter.paymentStatus = req.query.paymentStatus;
   }
 
+  const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   if (req.query.supplier) {
-    filter.supplierName = { $regex: req.query.supplier, $options: 'i' };
+    filter.supplierName = { $regex: escapeRegex(req.query.supplier), $options: 'i' };
   }
 
   if (req.query.billNumber) {
-    filter.billNumber = { $regex: req.query.billNumber, $options: 'i' };
+    filter.billNumber = { $regex: escapeRegex(req.query.billNumber), $options: 'i' };
   }
 
   if (req.query.date) {

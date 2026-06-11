@@ -4,6 +4,7 @@ import ProductCard from '../components/product/ProductCard';
 import { ArrowRight, ChevronRight, Mail, Quote, ShieldCheck, Star, Trophy, TrendingUp, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useProductStore } from '../store/useStore';
+import { Helmet } from 'react-helmet-async';
 
 const collectionHighlights = [
   {
@@ -76,6 +77,16 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <Helmet>
+        <title>K.S. Sports - Premium Athletic & Sports Goods</title>
+        <meta name="description" content="Shop premium hand-finished cricket bats, gloves, protective gear, sleeves, and training essentials at K.S. Sports. Built for elite athletic performance." />
+        <link rel="canonical" href="https://kssports-mern-96j7.vercel.app/" />
+        <meta property="og:title" content="K.S. Sports - Premium Athletic & Sports Goods" />
+        <meta property="og:description" content="Shop premium hand-finished cricket bats, gloves, protective gear, sleeves, and training essentials at K.S. Sports. Built for elite athletic performance." />
+        <meta property="og:image" content="https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80" />
+        <meta property="og:url" content="https://kssports-mern-96j7.vercel.app/" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       
       {/* Premium Hero Section */}
       <section className="relative overflow-hidden bg-slate-950">
@@ -159,7 +170,7 @@ const Home = () => {
             <div className="relative overflow-hidden rounded-[2.1rem] border border-white/12 bg-white/[0.07] p-4 shadow-[0_34px_100px_-42px_rgba(0,0,0,0.96)] backdrop-blur-xl">
               <div className="relative overflow-hidden rounded-[1.8rem]">
                 <img
-                  src="https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80"
+                  src="https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80"
                   alt="Featured K.S. Sports gear"
                   className="h-[560px] w-full object-cover object-center transition-transform duration-700 hover:scale-[1.02]"
                 />
@@ -171,7 +182,22 @@ const Home = () => {
                   <p className="mt-1 text-lg font-black text-white">Match Day Essentials</p>
                 </div>
 
-                <div className="absolute inset-x-5 bottom-5 grid gap-4">
+
+                {/* Right floating badge (Store Rating) */}
+                <div className="absolute -right-4 top-28 hidden w-44 rounded-[1.45rem] border border-white/10 bg-slate-950/72 p-4 shadow-[0_18px_40px_-22px_rgba(0,0,0,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 lg:block z-20">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-300">Store Rating</p>
+                  <div className="mt-3 flex items-center gap-2 text-yellow-400">
+                    <Star size={14} className="fill-yellow-400" />
+                    <Star size={14} className="fill-yellow-400" />
+                    <Star size={14} className="fill-yellow-400" />
+                    <Star size={14} className="fill-yellow-400" />
+                    <Star size={14} className="fill-yellow-400" />
+                  </div>
+                  <p className="mt-3 text-2xl font-black text-white">4.9/5</p>
+                  <p className="mt-1 text-xs text-slate-400">Trusted by serious players</p>
+                </div>
+
+                <div className="absolute inset-x-5 bottom-5 z-10">
                   <div className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-6 shadow-[0_24px_48px_-28px_rgba(0,0,0,0.88)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_34px_70px_-32px_rgba(220,38,38,0.35)]">
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                       <div className="max-w-md">
@@ -183,7 +209,7 @@ const Home = () => {
                       </div>
                       <div className="rounded-2xl bg-white/10 px-4 py-3 text-right shadow-inner shadow-white/5">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Starting At</p>
-                        <p className="mt-1 text-2xl font-black text-white">₹12,999</p>
+                        <p className="mt-1 text-2xl font-black text-white">₹3,000</p>
                       </div>
                     </div>
 
@@ -191,7 +217,7 @@ const Home = () => {
                       <div className="flex items-center gap-3">
                         {[
                           'https://images.unsplash.com/photo-1593341646782-e0b495cff86d?auto=format&fit=crop&q=80',
-                          'https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80',
+                          'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80',
                           'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80',
                         ].map((preview, index) => (
                           <div key={preview} className={`h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/10 ${index === 1 ? 'ring-2 ring-primary-500/70' : ''}`}>
@@ -210,25 +236,6 @@ const Home = () => {
                         <p className="text-sm font-semibold text-white">Trusted by academies</p>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="absolute -left-5 bottom-24 hidden w-48 rounded-[1.45rem] border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_40px_-22px_rgba(0,0,0,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 lg:block">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Quick Ship</p>
-                    <p className="mt-2 text-xl font-black text-white">24hr Dispatch</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">Fast movement on premium gear across major cities.</p>
-                  </div>
-
-                  <div className="absolute -right-4 top-24 hidden w-44 rounded-[1.45rem] border border-white/10 bg-slate-950/72 p-4 shadow-[0_18px_40px_-22px_rgba(0,0,0,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 lg:block">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-300">Store Rating</p>
-                    <div className="mt-3 flex items-center gap-2 text-yellow-400">
-                      <Star size={14} className="fill-yellow-400" />
-                      <Star size={14} className="fill-yellow-400" />
-                      <Star size={14} className="fill-yellow-400" />
-                      <Star size={14} className="fill-yellow-400" />
-                      <Star size={14} className="fill-yellow-400" />
-                    </div>
-                    <p className="mt-3 text-2xl font-black text-white">4.9/5</p>
-                    <p className="mt-1 text-xs text-slate-400">Trusted by serious players</p>
                   </div>
                 </div>
               </div>
@@ -425,7 +432,7 @@ const Home = () => {
       {/* Newsletter */}
       <section className="relative overflow-hidden border-t border-white/10 bg-[#090c12] py-24">
         <div className="absolute inset-0 opacity-20">
-           <img src="https://images.unsplash.com/photo-1540747913346-19e32fc3e64b?auto=format&fit=crop&q=80" className="w-full h-full object-cover" alt="K.S. Sports newsletter texture"/>
+           <img src="https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80" className="w-full h-full object-cover" alt="K.S. Sports newsletter texture"/>
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/35 via-slate-950/70 to-slate-950"></div>
         <div className="container-bound relative z-10 text-center max-w-3xl">

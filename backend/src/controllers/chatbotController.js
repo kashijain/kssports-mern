@@ -134,25 +134,17 @@ export const handleChatMessage = async (req, res) => {
     }
 
     // 2. DETECT PRODUCT QUERY / RECOMMENDATION INTENT
-    const matchedProducts = await parseAndSearchProducts(cleanMsg);
-    if (matchedProducts && matchedProducts.length > 0) {
+    const searchResult = await parseAndSearchProducts(cleanMsg);
+    if (searchResult && searchResult.products && searchResult.products.length > 0) {
+      let reply = `I found the following matching items in our K.S. Sports catalog:`;
+      if (searchResult.isFallback && searchResult.limitPhrase) {
+        reply = `I couldn't find products ${searchResult.limitPhrase}. Here are some similar products.`;
+      }
       return res.json({
-        reply: `I found the following matching items in our K.S. Sports catalog:`,
+        reply,
         nextLeadState: 'none',
         leadData: {},
-        products: matchedProducts,
-      });
-    }
-
-    // Check if it was a product search that returned nothing
-    const searchIndicatorWords = ['bat', 'ball', 'gloves', 'sleeves', 'shaker', 'racket', 'ss', 'sg', 'mrf', 'yonex', 'under', 'between'];
-    const isProductSearchAttempt = searchIndicatorWords.some(w => cleanMsgLower.includes(w));
-    if (isProductSearchAttempt) {
-      return res.json({
-        reply: `I couldn't find any products in our catalog matching those specifications at the moment. You can browse all athletic gear on our [Shop Page](/shop).`,
-        nextLeadState: 'none',
-        leadData: {},
-        products: [],
+        products: searchResult.products,
       });
     }
 
@@ -398,8 +390,8 @@ export const getChatbotAnalytics = async (req, res) => {
 export const searchProductsApi = async (req, res) => {
   try {
     const { q = '' } = req.query;
-    const products = await parseAndSearchProducts(q);
-    res.json(products);
+    const searchResult = await parseAndSearchProducts(q);
+    res.json(searchResult ? searchResult.products : []);
   } catch (error) {
     res.status(500).json({ message: error.message || 'Failed to search products' });
   }

@@ -1,4 +1,4 @@
-﻿import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useCartStore, useProductStore } from '../store/useStore';
 import { useWishlistStore } from '../store/useWishlistStore';
@@ -21,6 +21,7 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getImageUrl, getPrimaryProductImage } from '../utils/media';
 import { formatPrice } from '../utils/price';
+import { Helmet } from 'react-helmet-async';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -209,6 +210,15 @@ const ProductDetails = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 pb-20">
+      <Helmet>
+        <title>{`${product.name} - K.S. Sports`}</title>
+        <meta name="description" content={product.description || `Buy ${product.name} at K.S. Sports. Explore features, specifications, and client reviews of our high-quality gear.`} />
+        <link rel="canonical" href={`https://kssports-mern-96j7.vercel.app/product/${product._id}`} />
+        <meta property="og:title" content={`${product.name} - K.S. Sports`} />
+        <meta property="og:description" content={product.description || `Buy ${product.name} at K.S. Sports.`} />
+        <meta property="og:image" content={galleryImages[0]} />
+        <meta property="og:url" content={`https://kssports-mern-96j7.vercel.app/product/${product._id}`} />
+      </Helmet>
       <div className="container-bound pt-8">
         <nav className="mb-8 flex text-sm font-medium text-slate-500" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-3">

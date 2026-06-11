@@ -313,10 +313,10 @@ export const updateOrderToPaid = async (req, res) => {
     throw new Error('Order not found');
   }
 
-  const canAccess =
-    req.user.role === 'seller' || order.user.toString() === req.user._id.toString();
+  const isOwner = order.user.toString() === req.user._id.toString();
+  const isSeller = req.user.role === 'seller';
 
-  if (!canAccess) {
+  if (!isOwner && !isSeller) {
     res.status(403);
     throw new Error('Not authorized to update this order');
   }
@@ -325,8 +325,25 @@ export const updateOrderToPaid = async (req, res) => {
     return res.json(order);
   }
 
-  if (req.body.razorpay_payment_id) {
+  // If the request comes from a regular customer, enforce cryptographic signature verification
+  if (!isSeller) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      res.status(400);
+      throw new Error('Razorpay payment details (order ID, payment ID, and signature) are required');
+    }
+
+    const isValidSignature = verifyRazorpaySignature({
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    });
+
+    if (!isValidSignature) {
+      res.status(400);
+      throw new Error('Payment verification failed: Invalid signature');
+    }
 
     await ensureStockAvailability(order.orderItems);
     await decrementStockForItems(order.orderItems);
@@ -338,11 +355,17 @@ export const updateOrderToPaid = async (req, res) => {
       status: 'PAID',
     };
   } else {
+    // Sellers/Admins can manually update order to paid (e.g., for Cash on Delivery or manual bank transfers)
+    if (order.paymentMethod !== 'COD') {
+      await ensureStockAvailability(order.orderItems);
+      await decrementStockForItems(order.orderItems);
+    }
+
     order.paymentResult = {
-      id: req.body.id,
-      status: req.body.status,
-      update_time: req.body.update_time,
-      email_address: req.body.payer?.email_address || '',
+      id: req.body.id || `manual_${Date.now()}`,
+      status: req.body.status || 'PAID',
+      update_time: req.body.update_time || new Date().toISOString(),
+      email_address: req.body.payer?.email_address || req.user.email || '',
     };
   }
 
