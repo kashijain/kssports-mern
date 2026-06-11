@@ -6,6 +6,7 @@ import {
   updateProduct,
   deleteProduct,
   generateProductDetails,
+  visualSearchProducts,
 } from '../controllers/productController.js';
 import { protect, seller } from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.route('/').get(getProducts).post(protect, seller, upload.array('images', 4), createProduct);
 router.route('/generate-details').post(protect, seller, generateProductDetails);
+router.route('/visual-search').post(upload.single('image'), visualSearchProducts);
 router
   .route('/:id')
   .get(getProductById)

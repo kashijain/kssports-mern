@@ -13,6 +13,7 @@ import BatRepairSection from '../components/admin/BatRepairSection';
 import BusinessSummarySection from '../components/admin/BusinessSummarySection';
 import ExpenseManagementSection from '../components/admin/ExpenseManagementSection';
 import StockInwardSection from '../components/admin/StockInwardSection';
+import AIInquiriesSection from '../components/admin/AIInquiriesSection';
 
 const CATEGORY_OPTIONS=[
   'Bat',
@@ -160,6 +161,8 @@ const Dashboard=()=>{
             ?'expenses'
         :location.pathname.includes('/sales-report')
           ?'sales-report'
+        :location.pathname.includes('/ai-inquiries')
+          ?'ai-inquiries'
         :location.pathname.includes('/orders')
           ?'orders'
           :location.pathname.includes('/edit-product/')
@@ -266,6 +269,7 @@ const Dashboard=()=>{
     expenses:'Expenses',
     'business-summary':'Summary',
     'sales-report':'Sales Report',
+    'ai-inquiries':'AI Inquiries',
     orders:'Orders'
   };
   const pageTitle=pageTitleMap[tab] || 'Dashboard';
@@ -583,7 +587,8 @@ const Dashboard=()=>{
     ['orders','/admin/orders',Users,'Orders'],
     ['bat-repair','/admin/bat-repair',Wrench,'Bat Repair'],
     ['expenses','/admin/expenses',Wallet,'Expenses'],
-    ['sales-report','/admin/sales-report',BarChart3,'Sales Report']
+    ['sales-report','/admin/sales-report',BarChart3,'Sales Report'],
+    ['ai-inquiries','/admin/ai-inquiries',Sparkles,'AI Inquiries']
   ]:[['orders','/profile',ShoppingBag,'Order History']];
 
   return <div className="min-h-screen bg-transparent pb-16">
@@ -742,6 +747,8 @@ const Dashboard=()=>{
       {isSeller&&tab==='business-summary'&&<BusinessSummarySection />}
 
       {isSeller&&tab==='sales-report'&&<SalesReportSection />}
+
+      {isSeller&&tab==='ai-inquiries'&&<AIInquiriesSection />}
 
       {isSeller&&(tab==='form'||tab==='edit')&&(
         <form onSubmit={onSubmit} className="space-y-8">

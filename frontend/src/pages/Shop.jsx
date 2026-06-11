@@ -11,9 +11,11 @@ import {
   Sparkles,
   Star,
   ArrowRight,
+  Camera,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProductStore } from "../store/useStore";
+import VisualSearchModal from "../components/product/VisualSearchModal";
 
 const categoryOptions = [
   { label: "All", values: ["All"] },
@@ -36,7 +38,6 @@ const sortOptions = [
 const featuredLabelByIndex = ["Best Seller", "Featured", "", "New Arrival"];
 
 const Shop = () => {
-  const [searchTerm, setSearchTerm] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const [category, setCategory] = useState(searchParams.get("category") || "All");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -45,13 +46,30 @@ const Shop = () => {
   const [minRating, setMinRating] = useState(0);
   const [maxPrice, setMaxPrice] = useState(15000);
 
-  const { products, loading, fetchProducts } = useProductStore();
+  const [isVisualSearchModalOpen, setIsVisualSearchModalOpen] = useState(false);
+
+  const {
+    products,
+    loading,
+    fetchProducts,
+    searchTerm,
+    setSearchTerm,
+    visualSearchResults,
+    isVisualSearchActive,
+    visualSearchLoading,
+    uploadedImagePreview,
+    clearVisualSearch,
+  } = useProductStore();
 
   useEffect(() => {
-    if (typeof fetchProducts === "function") {
-      fetchProducts().catch(() => {});
-    }
-  }, [fetchProducts]);
+    const delayDebounceFn = setTimeout(() => {
+      if (typeof fetchProducts === "function") {
+        fetchProducts(searchTerm).catch(() => {});
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, fetchProducts]);
 
   useEffect(() => {
     setCategory(searchParams.get("category") || "All");
@@ -89,6 +107,7 @@ const Shop = () => {
     setMaxPrice(highestPrice);
     setShowMobileFilters(false);
     setSearchParams({});
+    clearVisualSearch();
   };
 
   const safeProducts = useMemo(() => {
@@ -96,12 +115,13 @@ const Shop = () => {
   }, [products]);
 
   const highestPrice = useMemo(() => {
-    const maxProductPrice = safeProducts.reduce(
+    const sourceProducts = isVisualSearchActive ? visualSearchResults : safeProducts;
+    const maxProductPrice = sourceProducts.reduce(
       (max, product) => Math.max(max, Number(product?.price || 0)),
       0
     );
     return Math.max(15000, Math.ceil(maxProductPrice / 500) * 500 || 15000);
-  }, [safeProducts]);
+  }, [safeProducts, visualSearchResults, isVisualSearchActive]);
 
   useEffect(() => {
     setMaxPrice(highestPrice);
@@ -109,32 +129,43 @@ const Shop = () => {
 
   const filteredProducts = useMemo(() => {
     const activeCategory = categoryOptions.find((item) => item.label === category);
-    const nextProducts = safeProducts.filter((product) => {
-      const productName = String(product?.name || "").toLowerCase();
-      const productCategory = String(product?.category || "").toLowerCase();
-      const normalizedSearch = searchTerm.toLowerCase();
+    const sourceProducts = isVisualSearchActive ? visualSearchResults : safeProducts;
 
-      const matchSearch = productName.includes(normalizedSearch);
+    const nextProducts = sourceProducts.filter((product) => {
+      const productCategory = String(product?.category || "").toLowerCase();
+
       const matchCategory =
         !activeCategory ||
         category === "All" ||
         activeCategory.values.some((value) => productCategory === String(value).toLowerCase());
       const matchPrice = Number(product?.price || 0) <= maxPrice;
       const matchRating = Number(product?.rating || 0) >= minRating;
+      const matchSimilarity = !isVisualSearchActive || (product?.similarity || 0) >= 50;
 
-      return matchSearch && matchCategory && matchPrice && matchRating;
+      return matchCategory && matchPrice && matchRating && matchSimilarity;
     });
 
     return [...nextProducts].sort((a, b) => {
+      if (isVisualSearchActive && sortBy === "featured") {
+        return Number(b?.similarity || 0) - Number(a?.similarity || 0);
+      }
       if (sortBy === "price-low") return Number(a?.price || 0) - Number(b?.price || 0);
       if (sortBy === "price-high") return Number(b?.price || 0) - Number(a?.price || 0);
       if (sortBy === "rating") return Number(b?.rating || 0) - Number(a?.rating || 0);
       if (sortBy === "name") return String(a?.name || "").localeCompare(String(b?.name || ""));
       return 0;
     });
-  }, [safeProducts, searchTerm, category, maxPrice, minRating, sortBy]);
+  }, [safeProducts, visualSearchResults, isVisualSearchActive, category, maxPrice, minRating, sortBy]);
 
-  const isDataLoading = loading || localLoading;
+  const isDataLoading = loading || localLoading || visualSearchLoading;
+
+  const hasLowConfidence = useMemo(() => {
+    if (!isVisualSearchActive) return false;
+    if (visualSearchResults.length === 0) return true;
+    const maxScore = Math.max(...visualSearchResults.map(p => p.similarity || 0));
+    return maxScore < 55;
+  }, [isVisualSearchActive, visualSearchResults]);
+
   const hasActiveFilters =
     searchTerm || category !== "All" || minRating > 0 || maxPrice < highestPrice || sortBy !== "featured";
 
@@ -190,7 +221,7 @@ const Shop = () => {
                   placeholder="Search premium gear..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="input-premium h-12 w-full border-white/10 bg-white/[0.05] pl-11 pr-10 text-white placeholder:text-slate-500 focus:border-primary-600 focus:ring-primary-600/20"
+                  className="input-premium h-12 w-full border-white/10 bg-white/[0.05] pl-11 pr-20 text-white placeholder:text-slate-500 focus:border-primary-600 focus:ring-primary-600/20"
                 />
 
                 <Search
@@ -198,18 +229,28 @@ const Shop = () => {
                   size={18}
                 />
 
-                {searchTerm && (
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerLocalLoading();
+                        setSearchTerm("");
+                      }}
+                      className="rounded-full bg-white/[0.06] p-1 text-slate-400 transition-colors hover:text-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => {
-                      triggerLocalLoading();
-                      setSearchTerm("");
-                    }}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-full bg-white/[0.06] p-1 text-slate-400 transition-colors hover:text-red-500"
+                    onClick={() => setIsVisualSearchModalOpen(true)}
+                    className="rounded-full bg-white/[0.06] p-1.5 text-slate-400 transition-colors hover:bg-primary-600 hover:text-white"
+                    title="Search by image"
                   >
-                    <X size={14} />
+                    <Camera size={15} />
                   </button>
-                )}
+                </div>
               </div>
             </div>
 
@@ -327,12 +368,34 @@ const Shop = () => {
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="input-premium h-12 w-full border-white/10 bg-white/[0.05] pl-10 text-white placeholder:text-slate-500"
+                  className="input-premium h-12 w-full border-white/10 bg-white/[0.05] pl-10 pr-20 text-white placeholder:text-slate-500"
                 />
                 <Search
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                   size={18}
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerLocalLoading();
+                        setSearchTerm("");
+                      }}
+                      className="rounded-full bg-white/[0.06] p-1.5 text-slate-400 transition-colors hover:text-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsVisualSearchModalOpen(true)}
+                    className="rounded-full bg-white/[0.06] p-1.5 text-slate-400 transition-colors hover:bg-primary-600 hover:text-white"
+                    title="Search by image"
+                  >
+                    <Camera size={15} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -396,6 +459,38 @@ const Shop = () => {
 
           {/* Product Grid */}
           <div className="lg:flex-1">
+            {isVisualSearchActive && (
+              <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-emerald-500/20 bg-emerald-950/15 p-5 shadow-[0_20px_50px_rgba(16,185,129,0.06)] md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  {uploadedImagePreview && (
+                    <div className="h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-[#0a0d13]">
+                      <img
+                        src={uploadedImagePreview}
+                        alt="Uploaded preview"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-base font-black uppercase tracking-wide text-emerald-400">
+                      Visual Search Results
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Showing products matched using CLIP vision AI, sorted by similarity.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => clearVisualSearch()}
+                  className="btn-secondary h-11 border-emerald-500/30 bg-emerald-500/5 px-5 text-xs font-bold uppercase tracking-wider text-emerald-400 hover:bg-emerald-600 hover:text-white"
+                >
+                  Clear Visual Search
+                </button>
+              </div>
+            )}
+
             <div className="mb-8 flex flex-col gap-5 rounded-[2rem] border border-white/10 bg-[#11151d] p-6 shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)] xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h2 className="text-2xl font-black uppercase tracking-tight text-white">
@@ -439,6 +534,28 @@ const Shop = () => {
                     className="h-[520px] rounded-[2rem] border border-white/10 bg-white/[0.05] animate-pulse"
                   />
                 ))
+              ) : hasLowConfidence ? (
+                <div className="col-span-full rounded-[2rem] border border-white/10 bg-[#11151d] px-6 py-14 text-center shadow-[0_24px_70px_-38px_rgba(0,0,0,0.9)]">
+                  <div className="w-20 h-20 bg-primary-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search size={32} className="text-primary-600" />
+                  </div>
+
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    No similar products found
+                  </h2>
+
+                  <p className="text-slate-400 max-w-md mx-auto mb-8">
+                    The uploaded image did not match any products in our catalog with sufficient confidence.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="btn-primary inline-flex px-8 h-12"
+                  >
+                    Clear Visual Search
+                  </button>
+                </div>
               ) : filteredProducts.length > 0 ? (
                 filteredProducts.map((product, index) => (
                   <motion.div
@@ -494,6 +611,10 @@ const Shop = () => {
           </div>
         </div>
       </div>
+      <VisualSearchModal
+        isOpen={isVisualSearchModalOpen}
+        onClose={() => setIsVisualSearchModalOpen(false)}
+      />
     </div>
   );
 };

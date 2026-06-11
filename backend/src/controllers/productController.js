@@ -1,6 +1,9 @@
 import Product from '../models/Product.js';
 import { hasCloudinaryConfig } from '../config/cloudinary.js';
 import { uploadBufferToCloudinary } from '../utils/uploadToCloudinary.js';
+import fs from 'fs';
+import path from 'path';
+import { getEmbedding, isPlaceholderImage, cosineSimilarity } from '../utils/embeddingHelper.js';
 
 const DEFAULT_PRODUCT_IMAGE = '/uploads/product-placeholder.png';
 const CATEGORY_DETAIL_TEMPLATES = {
@@ -328,13 +331,26 @@ export const createProduct = async (req, res) => {
     throw new Error('At least one product image is required');
   }
 
+  const primaryImage = images[0] || DEFAULT_PRODUCT_IMAGE;
+  let imageEmbedding = undefined;
+
+  if (!isPlaceholderImage(primaryImage)) {
+    try {
+      console.log(`[CLIP] Generating embedding for new product: "${name}"...`);
+      imageEmbedding = await getEmbedding(primaryImage);
+    } catch (err) {
+      console.error('[CLIP] Failed to generate embedding on product creation:', err.message);
+    }
+  }
+
   const product = await Product.create({
     name: name.trim(),
     price: Number(price),
     costPrice: costPrice !== undefined ? Number(costPrice) : 0,
     user: req.user._id,
-    image: images[0] || DEFAULT_PRODUCT_IMAGE,
+    image: primaryImage,
     images,
+    imageEmbedding,
     brand: brand.trim(),
     category: category.trim(),
     countInStock: Number(countInStock) || 0,
@@ -389,11 +405,90 @@ export const updateProduct = async (req, res) => {
   product.specifications = specificationsProvided
     ? incomingSpecifications
     : product.specifications;
+
+  const prevPrimaryImage = product.image;
+  const nextPrimaryImage = nextImages[0] || DEFAULT_PRODUCT_IMAGE;
+
   product.images = nextImages;
-  product.image = nextImages[0] || DEFAULT_PRODUCT_IMAGE;
+  product.image = nextPrimaryImage;
+
+  if (nextPrimaryImage !== prevPrimaryImage || !product.imageEmbedding || product.imageEmbedding.length === 0) {
+    if (!isPlaceholderImage(nextPrimaryImage)) {
+      try {
+        console.log(`[CLIP] Primary image changed. Regenerating embedding for "${product.name}"...`);
+        product.imageEmbedding = await getEmbedding(nextPrimaryImage);
+      } catch (err) {
+        console.error('[CLIP] Failed to regenerate embedding on product update:', err.message);
+      }
+    } else {
+      product.imageEmbedding = undefined;
+    }
+  }
 
   const updatedProduct = await product.save();
   res.json(updatedProduct);
+};
+
+export const visualSearchProducts = async (req, res) => {
+  if (!req.file) {
+    res.status(400);
+    throw new Error('Please upload an image file');
+  }
+
+  try {
+    let imagePathOrBuffer;
+    let tempFilePath = null;
+
+    if (req.file.buffer) {
+      const safeName = `temp-search-${Date.now()}.png`;
+      tempFilePath = path.join(path.resolve(), 'uploads', safeName);
+      const uploadsDir = path.join(path.resolve(), 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      fs.writeFileSync(tempFilePath, req.file.buffer);
+      imagePathOrBuffer = tempFilePath;
+    } else {
+      imagePathOrBuffer = req.file.path;
+    }
+
+    console.log('[CLIP] Generating embedding for uploaded visual search image...');
+    const uploadedEmbedding = await getEmbedding(imagePathOrBuffer);
+
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (err) {
+        console.error('[CLIP] Error cleaning up temp search file:', err.message);
+      }
+    }
+
+    const products = await Product.find({
+      imageEmbedding: { $exists: true, $not: { $size: 0 }, $ne: null }
+    });
+
+    console.log(`[CLIP] Comparing search embedding against ${products.length} products...`);
+
+    const results = products.map((product) => {
+      const score = cosineSimilarity(uploadedEmbedding, product.imageEmbedding);
+      const similarityPercentage = Number((score * 100).toFixed(1));
+      
+      const productObj = product.toObject();
+      return {
+        ...productObj,
+        similarity: similarityPercentage
+      };
+    });
+
+    results.sort((a, b) => b.similarity - a.similarity);
+
+    const top10 = results.slice(0, 10);
+    res.json(top10);
+  } catch (error) {
+    console.error('[CLIP] Visual search error:', error.message);
+    res.status(500);
+    throw new Error(`Failed to perform visual search: ${error.message}`);
+  }
 };
 
 export const deleteProduct = async (req, res) => {

@@ -62,6 +62,10 @@ const productSchema = mongoose.Schema(
       type: [String],
       required: false,
     },
+    imageEmbedding: {
+      type: [Number],
+      required: false,
+    },
     brand: {
       type: String,
       required: true,

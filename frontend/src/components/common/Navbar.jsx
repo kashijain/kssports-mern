@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Heart, LogOut, Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
-import { useCartStore, useAuthStore, useThemeStore } from '../../store/useStore';
+import { Heart, LogOut, Menu, Moon, Search, ShoppingBag, Sun, User, X, Camera } from 'lucide-react';
+import { useCartStore, useAuthStore, useThemeStore, useProductStore } from '../../store/useStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
+import VisualSearchModal from '../product/VisualSearchModal';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -16,6 +17,37 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const profileMenuRef = useRef(null);
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isVisualSearchModalOpen, setIsVisualSearchModalOpen] = useState(false);
+  const [navbarFile, setNavbarFile] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const { searchTerm, setSearchTerm } = useProductStore();
+
+  const handleSearchInputChange = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    if (location.pathname !== '/shop') {
+      navigate('/shop');
+    }
+  };
+
+  const handleCameraClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNavbarFile(file);
+      setIsVisualSearchModalOpen(true);
+      if (location.pathname !== '/shop') {
+        navigate('/shop');
+      }
+      e.target.value = '';
+    }
+  };
 
   const cartItemsCount = cartItems.reduce((acc, item) => acc + item.qty, 0);
   const wishlistCount = wishlistItems.length;
@@ -104,11 +136,14 @@ const Navbar = () => {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <button onClick={toggleTheme} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400">
+          <button onClick={toggleTheme} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400" title="Toggle theme">
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <button className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400">
+          <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400 ${isSearchOpen ? 'border-primary-500 bg-white dark:bg-[#181d26]' : 'border-white/60 bg-white/70'}`} title="Search products">
             <Search size={20} />
+          </button>
+          <button onClick={handleCameraClick} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400" title="Search by image">
+            <Camera size={20} />
           </button>
           <Link to="/wishlist" className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] transition-all hover:-translate-y-0.5 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-primary-400">
             <Heart size={20} />
@@ -176,6 +211,12 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-3 md:hidden">
+          <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 ${isSearchOpen ? 'border-primary-500 bg-white' : 'border-white/60 bg-white/70'}`} title="Search products">
+            <Search size={20} />
+          </button>
+          <button onClick={handleCameraClick} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300" title="Search by image">
+            <Camera size={20} />
+          </button>
           <Link to="/cart" className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-600 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.6)] dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             <ShoppingBag size={22} />
             {cartItemsCount > 0 && <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white shadow-lg shadow-primary-600/30">{cartItemsCount}</span>}
@@ -185,6 +226,55 @@ const Navbar = () => {
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden border-t border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-dark-card/96"
+          >
+            <div className="container-bound py-4 relative">
+              <input
+                type="text"
+                placeholder="Search premium sports gear..."
+                value={searchTerm}
+                onChange={handleSearchInputChange}
+                className="input-premium pl-12 pr-12 h-12 w-full border-slate-200/80 bg-white/70 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                autoFocus
+              />
+              <Search className="absolute left-9 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-9 top-1/2 -translate-y-1/2 rounded-full bg-slate-100 p-1.5 text-slate-400 hover:text-red-500 dark:bg-white/10"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
+      <VisualSearchModal
+        isOpen={isVisualSearchModalOpen}
+        file={navbarFile}
+        onClose={() => {
+          setIsVisualSearchModalOpen(false);
+          setNavbarFile(null);
+        }}
+      />
 
       <AnimatePresence>
         {isMobileMenuOpen && (

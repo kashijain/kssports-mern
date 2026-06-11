@@ -131,6 +131,12 @@ export const useProductStore = create((set, get) => ({
   product: null,
   loading: false,
   error: null,
+  searchTerm: '',
+  setSearchTerm: (term) => set({ searchTerm: term }),
+  visualSearchResults: [],
+  isVisualSearchActive: false,
+  visualSearchLoading: false,
+  uploadedImagePreview: null,
 
   fetchProducts: async (keyword = '') => {
     set({ loading: true, error: null });
@@ -204,6 +210,49 @@ export const useProductStore = create((set, get) => ({
       set({ error: message, loading: false });
       throw new Error(message);
     }
+  },
+
+  searchProductsByVisual: async (file) => {
+    set({ visualSearchLoading: true, error: null, isVisualSearchActive: true });
+    const previewUrl = URL.createObjectURL(file);
+    set({ uploadedImagePreview: previewUrl });
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const { data } = await api.post('/products/visual-search', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      set({
+        visualSearchResults: data || [],
+        visualSearchLoading: false,
+      });
+      return data || [];
+    } catch (error) {
+      const message = error.response?.data?.message || 'Visual search failed';
+      set({ error: message, visualSearchLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  clearVisualSearch: () => {
+    const previewUrl = get().uploadedImagePreview;
+    if (previewUrl) {
+      try {
+        URL.revokeObjectURL(previewUrl);
+      } catch (e) {
+        console.error('Error revoking URL:', e);
+      }
+    }
+    set({
+      visualSearchResults: [],
+      isVisualSearchActive: false,
+      uploadedImagePreview: null,
+    });
   }
 }));
 

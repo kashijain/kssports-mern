@@ -13,6 +13,7 @@ import adminReportRoutes from './routes/adminReportRoutes.js';
 import batRepairRoutes from './routes/batRepairRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
+import chatbotRoutes from './routes/chatbotRoutes.js';
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api/admin-reports', adminReportRoutes);
 app.use('/api/admin', adminReportRoutes);
 app.use('/api/bat-repairs', batRepairRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 const __dirname = path.resolve();
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));

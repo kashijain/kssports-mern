@@ -1,4 +1,5 @@
 import { Instagram, MessageCircle } from 'lucide-react';
+import Chatbot from './Chatbot';
 
 const socialLinks = [
   {
@@ -18,7 +19,8 @@ const socialLinks = [
 ];
 
 const FloatingSocial = () => (
-  <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+  <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3 items-end">
+    <Chatbot />
     {socialLinks.map(({ name, href, icon: Icon, className }) => (
       <a
         key={name}

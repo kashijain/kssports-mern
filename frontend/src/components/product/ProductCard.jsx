@@ -54,10 +54,16 @@ const ProductCard = ({ product, variant = 'default', badgeLabel = '' }) => {
             Sold Out
           </div>
         )}
-        {badgeLabel && product.countInStock > 0 && (
-          <div className="absolute left-4 top-4 z-10 rounded-full border border-primary-400/25 bg-primary-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_30px_-16px_rgba(220,38,38,0.85)]">
-            {badgeLabel}
+        {product.similarity !== undefined ? (
+          <div className="absolute left-4 top-4 z-10 rounded-full border border-emerald-500/30 bg-emerald-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_30px_-16px_rgba(16,185,129,0.85)]">
+            {Math.round(product.similarity)}% Match
           </div>
+        ) : (
+          badgeLabel && product.countInStock > 0 && (
+            <div className="absolute left-4 top-4 z-10 rounded-full border border-primary-400/25 bg-primary-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_30px_-16px_rgba(220,38,38,0.85)]">
+              {badgeLabel}
+            </div>
+          )
         )}
         <div className={`absolute right-4 top-4 z-10 flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold shadow-sm backdrop-blur-md ${
           isShopVariant
